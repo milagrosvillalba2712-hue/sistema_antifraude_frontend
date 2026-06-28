@@ -9,6 +9,7 @@ import Rules from './pages/Rules';
 import KYC from './pages/KYC';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/kyc" element={<KYC />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/profile" element={<Profile />} />
           </Route>
         </Route>
 

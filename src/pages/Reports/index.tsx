@@ -34,29 +34,29 @@ const Reports = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Reportes ROS</h1>
+    <div className="space-y-gutter">
+      <h1 className="text-secondary font-semibold text-2xl">Reportes ROS</h1>
 
       {/* Export Form */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold mb-4">Exportar Reporte de Operaciones Sospechosas</h2>
+      <div className="bg-white rounded-xl border border-surface-container-highest shadow-sm p-6">
+        <h2 className="text-secondary font-semibold text-lg mb-4">Exportar Reporte de Operaciones Sospechosas</h2>
         <div className="flex items-end gap-4">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-secondary mb-1">
               ID de Alerta
             </label>
             <input
               type="number"
               value={alertaId}
               onChange={(e) => setAlertaId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary placeholder-secondary/40 focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
               placeholder="Ingrese el ID de la alerta"
             />
           </div>
           <button
             onClick={handleExport}
             disabled={loading || !alertaId}
-            className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 flex items-center"
+            className="px-6 py-2 bg-success text-white rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center font-bold text-sm transition-opacity"
           >
             {loading ? (
               <>
@@ -75,26 +75,26 @@ const Reports = () => {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="bg-error-container/30 border border-error-container rounded-xl p-4">
           <div className="flex items-center">
-            <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
-            <p className="text-red-700">{error}</p>
+            <AlertTriangle className="w-5 h-5 text-error mr-2" />
+            <p className="text-error">{error}</p>
           </div>
         </div>
       )}
 
       {/* Info */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-xl border border-surface-container-highest shadow-sm p-6">
         <div className="flex items-start">
-          <FileText className="w-6 h-6 text-blue-600 mt-1" />
+          <FileText className="w-6 h-6 text-primary-container mt-1" />
           <div className="ml-4">
-            <h3 className="text-lg font-semibold">Acerca de los Reportes ROS</h3>
-            <p className="text-gray-600 mt-2">
+            <h3 className="text-secondary font-semibold text-lg">Acerca de los Reportes ROS</h3>
+            <p className="text-secondary/70 mt-2">
               Los Reportes de Operaciones Sospechosas (ROS) se generan a partir de alertas
               del sistema. Cada reporte contiene información detallada sobre la transacción,
               la regla que se activó y la evaluación realizada.
             </p>
-            <ul className="list-disc list-inside text-gray-600 mt-2 space-y-1">
+            <ul className="list-disc list-inside text-secondary/70 mt-2 space-y-1">
               <li>El reporte se exporta en formato CSV</li>
               <li>Se incluye información de la alerta y la transacción asociada</li>
               <li>Los reportes son generados por el usuario actual</li>

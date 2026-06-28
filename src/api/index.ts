@@ -5,3 +5,5 @@ export { dashboardApi } from './dashboard';
 export { kycApi } from './kyc';
 export { reportsApi } from './reports';
 export { usersApi } from './users';
+export { profileApi, availabilityApi } from './profile';
+export { assignmentApi } from './assignment';

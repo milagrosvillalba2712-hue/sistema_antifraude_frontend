@@ -4,6 +4,11 @@ export type EstadoAlerta = 'PENDIENTE' | 'ASIGNADA' | 'INVESTIGANDO' | 'RESUELTA
 
 export type PrioridadAlerta = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA';
 
+export type EstadoUsuario =
+  | 'DISPONIBLE' | 'EN_REUNION' | 'ALMUERZO'
+  | 'VACACIONES' | 'CAPACITACION' | 'FUERA_OFICINA'
+  | 'NO_DISPONIBLE';
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -117,4 +122,59 @@ export interface Transaccion {
   scoreRiesgo: number | null;
   procesada: boolean;
   fechaProcesamiento: string | null;
+}
+
+export interface PerfilUsuario {
+  id: number;
+  usuarioId: number;
+  nombreVisible: string | null;
+  imagenPerfil: string | null;
+  estado: EstadoUsuario;
+  estadoPersonalizado: string | null;
+  ultimaActualizacionEstado: string | null;
+}
+
+export interface Disponibilidad {
+  id: number;
+  usuarioId: number;
+  tipoEstado: string;
+  fechaInicio: string;
+  fechaFin: string | null;
+  esProgramado: boolean;
+  motivo: string | null;
+  activo: boolean;
+}
+
+export interface HistorialAsignacion {
+  id: number;
+  alertaId: number;
+  usuarioOrigenId: number | null;
+  usuarioOrigenNombre: string | null;
+  usuarioDestinoId: number;
+  usuarioDestinoNombre: string;
+  fecha: string;
+  motivo: string | null;
+  tipo: 'ASIGNACION' | 'REASIGNACION' | 'REBALANCEO';
+}
+
+export interface TimelineEvent {
+  id: number | null;
+  tipo: string;
+  descripcion: string;
+  fecha: string;
+  usuario: string | null;
+}
+
+export interface WorkloadData {
+  usuarioId: number;
+  nombre: string;
+  alertasAsignadas: number;
+  alertasPendientes: number;
+  tiempoPromedioResolucion: number;
+}
+
+export interface AlertFilters {
+  search: string;
+  estado: EstadoAlerta | '';
+  prioridad: PrioridadAlerta | '';
 }

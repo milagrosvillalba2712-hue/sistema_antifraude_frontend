@@ -1,5 +1,5 @@
 import api from './axios';
-import type { Alerta } from '../types';
+import type { Alerta, HistorialAsignacion, TimelineEvent } from '../types';
 
 export const alertsApi = {
   getAll: async (): Promise<Alerta[]> => {
@@ -17,13 +17,33 @@ export const alertsApi = {
     return response.data;
   },
 
-  asignar: async (id: number): Promise<Alerta> => {
-    const response = await api.post<Alerta>(`/alertas/${id}/asignar`);
+  asignar: async (id: number, analistaId?: number): Promise<Alerta> => {
+    const response = await api.post<Alerta>(`/alertas/${id}/asignar`, { analistaId });
+    return response.data;
+  },
+
+  autoAsignar: async (id: number): Promise<Alerta> => {
+    const response = await api.post<Alerta>(`/alertas/${id}/auto-assign`);
+    return response.data;
+  },
+
+  reasignar: async (id: number, analistaId: number, motivo?: string): Promise<Alerta> => {
+    const response = await api.post<Alerta>(`/alertas/${id}/reassign`, { analistaId, motivo });
     return response.data;
   },
 
   resolver: async (id: number, observacion: string): Promise<Alerta> => {
     const response = await api.post<Alerta>(`/alertas/${id}/resolver`, { observacion });
+    return response.data;
+  },
+
+  getHistory: async (id: number): Promise<HistorialAsignacion[]> => {
+    const response = await api.get<HistorialAsignacion[]>(`/alertas/${id}/history`);
+    return response.data;
+  },
+
+  getTimeline: async (id: number): Promise<TimelineEvent[]> => {
+    const response = await api.get<TimelineEvent[]>(`/alertas/${id}/timeline`);
     return response.data;
   },
 };

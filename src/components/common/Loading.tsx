@@ -16,8 +16,8 @@ const sizeClasses = {
 export const Loading = ({ className, size = 'md', text }: LoadingProps) => {
   return (
     <div className={cn('flex flex-col items-center justify-center', className)}>
-      <Loader2 className={cn('animate-spin text-blue-600', sizeClasses[size])} />
-      {text && <p className="mt-2 text-sm text-gray-600">{text}</p>}
+      <Loader2 className={cn('animate-spin text-primary-container', sizeClasses[size])} />
+      {text && <p className="mt-2 text-sm text-secondary/60">{text}</p>}
     </div>
   );
 };

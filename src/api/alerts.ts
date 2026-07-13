@@ -37,6 +37,11 @@ export const alertsApi = {
     return response.data;
   },
 
+  cerrar: async (id: number): Promise<Alerta> => {
+    const response = await api.post<Alerta>(`/alertas/${id}/cerrar`);
+    return response.data;
+  },
+
   getHistory: async (id: number): Promise<HistorialAsignacion[]> => {
     const response = await api.get<HistorialAsignacion[]>(`/alertas/${id}/history`);
     return response.data;

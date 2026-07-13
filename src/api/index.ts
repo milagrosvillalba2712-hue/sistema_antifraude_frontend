@@ -7,3 +7,7 @@ export { reportsApi } from './reports';
 export { usersApi } from './users';
 export { profileApi, availabilityApi } from './profile';
 export { assignmentApi } from './assignment';
+export { simuladorApi } from './simulador';
+export { casesApi } from './cases';
+export { motorApi } from './motor';
+export { escenariosApi } from './escenarios';

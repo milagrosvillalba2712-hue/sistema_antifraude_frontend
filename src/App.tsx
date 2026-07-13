@@ -10,6 +10,8 @@ import KYC from './pages/KYC';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Profile from './pages/Profile';
+import Simulador from './pages/Simulador';
+import MotorHistorial from './pages/MotorHistorial';
 
 function App() {
   return (
@@ -26,12 +28,19 @@ function App() {
             <Route path="/kyc" element={<KYC />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/simulador" element={<Simulador />} />
+            <Route path="/motor/historial" element={<MotorHistorial />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'SUPERVISOR']} />}>
+          <Route element={<AuthenticatedLayout />}>
+            <Route path="/rules" element={<Rules />} />
           </Route>
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']} />}>
           <Route element={<AuthenticatedLayout />}>
-            <Route path="/rules" element={<Rules />} />
             <Route path="/users" element={<Users />} />
           </Route>
         </Route>

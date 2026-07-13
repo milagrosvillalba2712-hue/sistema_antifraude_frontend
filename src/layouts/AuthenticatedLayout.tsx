@@ -10,19 +10,23 @@ import {
   X,
   Settings,
   User,
+  Play,
+  History,
 } from 'lucide-react';
 import { useAuthStore } from '../store';
 import { cn } from '../utils';
 import { RegulaIcon } from '../components/common';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['ADMINISTRADOR', 'ANALISTA'] },
-  { name: 'Alertas', href: '/alerts', icon: AlertTriangle, roles: ['ADMINISTRADOR', 'ANALISTA'], badge: 24 },
-  { name: 'Reglas', href: '/rules', icon: FileText, roles: ['ADMINISTRADOR'] },
-  { name: 'KYC', href: '/kyc', icon: Search, roles: ['ADMINISTRADOR', 'ANALISTA'] },
-  { name: 'Reportes', href: '/reports', icon: FileText, roles: ['ADMINISTRADOR', 'ANALISTA'] },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'] },
+  { name: 'Alertas', href: '/alerts', icon: AlertTriangle, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'], badge: 24 },
+  { name: 'Reglas', href: '/rules', icon: FileText, roles: ['ADMINISTRADOR', 'SUPERVISOR'] },
+  { name: 'Simulador', href: '/simulador', icon: Play, roles: ['ADMINISTRADOR', 'SUPERVISOR'] },
+  { name: 'Motor Historial', href: '/motor/historial', icon: History, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'AUDITOR'] },
+  { name: 'KYC', href: '/kyc', icon: Search, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'] },
+  { name: 'Reportes', href: '/reports', icon: FileText, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'] },
   { name: 'Usuarios', href: '/users', icon: Users, roles: ['ADMINISTRADOR'] },
-  { name: 'Mi Perfil', href: '/profile', icon: User, roles: ['ADMINISTRADOR', 'ANALISTA'] },
+  { name: 'Mi Perfil', href: '/profile', icon: User, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'] },
 ];
 
 export const AuthenticatedLayout = () => {
@@ -31,7 +35,7 @@ export const AuthenticatedLayout = () => {
   const { user, hasRole } = useAuthStore();
 
   const filteredNavigation = navigation.filter((item) =>
-    item.roles.some((role) => hasRole(role as 'ADMINISTRADOR' | 'ANALISTA'))
+    item.roles.some((role) => hasRole(role as 'ADMINISTRADOR' | 'SUPERVISOR' | 'ANALISTA' | 'AUDITOR'))
   );
 
   const getUserInitials = () => {

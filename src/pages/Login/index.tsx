@@ -38,12 +38,12 @@ const Login = () => {
         <div className="bg-white rounded-xl border border-surface-container-highest shadow-sm p-8">
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-primary-container rounded-full flex items-center justify-center">
-                <RegulaIcon className="w-10 h-10" />
+              <div className="w-16 h-16 rounded-full flex items-center justify-center">
+                <RegulaIcon className="w-16 h-16" />
               </div>
             </div>
-            <h1 className="text-secondary font-semibold text-2xl">Sistema Antifraude</h1>
-            <p className="text-secondary/60 mt-2 text-sm">Inicia sesión para continuar</p>
+            <h1 className="text-secondary font-semibold text-2xl">Regula</h1>
+            <p className="text-secondary/60 mt-2 text-sm">Accede a la plataforma de sistema antifraude</p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

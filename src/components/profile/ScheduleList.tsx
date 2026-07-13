@@ -54,10 +54,10 @@ export default function ScheduleList({ schedules, onCancel }: ScheduleListProps)
           >
             <div>
               <p className="text-sm font-medium text-secondary">
-                {tipoEstadoLabels[schedule.tipoEstado] || schedule.tipoEstado}
+                {schedule.tipoEstado ? (tipoEstadoLabels[schedule.tipoEstado] || schedule.tipoEstado) : schedule.estado}
               </p>
               <p className="text-xs text-secondary/60">
-                {formatDate(schedule.fechaInicio)}
+                {schedule.fechaInicio && formatDate(schedule.fechaInicio)}
                 {schedule.fechaFin && ` - ${formatDate(schedule.fechaFin)}`}
               </p>
               {schedule.motivo && (

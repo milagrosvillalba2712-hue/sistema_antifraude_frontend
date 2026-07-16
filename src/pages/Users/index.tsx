@@ -286,7 +286,9 @@ const Users = () => {
                   className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
                 >
                   <option value="ANALISTA">Analista</option>
+                  <option value="SUPERVISOR">Supervisor</option>
                   <option value="ADMINISTRADOR">Administrador</option>
+                  <option value="AUDITOR">Auditor</option>
                 </select>
                 {errors.rol && (
                   <p className="mt-1 text-sm text-error">{errors.rol.message}</p>

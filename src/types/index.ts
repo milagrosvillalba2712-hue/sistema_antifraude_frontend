@@ -118,6 +118,44 @@ export interface Accion {
   descripcion: string | null;
 }
 
+export interface CatalogoItem {
+  id: number;
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+  activo: boolean;
+}
+
+export interface EntitySummary {
+  key: string;
+  table: string;
+  count: number;
+  editable: boolean;
+}
+
+export interface EntityFieldSchema {
+  name: string;
+  type: string;
+  relationType: string | null;
+  relation: boolean;
+  editable: boolean;
+}
+
+export interface EntitySchema {
+  key: string;
+  table: string;
+  editable: boolean;
+  fields: EntityFieldSchema[];
+}
+
+export type EntityRecord = Record<string, unknown>;
+
+export interface CondicionRegla {
+  fact: string;
+  operador: '==' | '!=' | '>' | '>=' | '<' | '<=' | 'in' | 'between' | 'exists';
+  valor: string | number | boolean | Array<string | number>;
+}
+
 export interface ReglaRiesgo {
   id: number;
   escenarioId: number;
@@ -132,6 +170,9 @@ export interface ReglaRiesgo {
   estado: EstadoRegla;
   parametros?: ParametroRegla[];
   acciones?: Accion[];
+  condicion?: string;
+  condicionesJson?: string | null;
+  accionesJson?: string | null;
   fechaCreacion: string;
   fechaModificacion: string | null;
 }
@@ -145,6 +186,8 @@ export interface ReglaRiesgoRequest {
   prioridad: number;
   score: number;
   estado?: EstadoRegla;
+  condiciones?: { combinador: 'ALL' | 'ANY'; items: CondicionRegla[] };
+  acciones?: Array<{ codigo: string; descripcion: string }>;
   parametros?: { clave: string; valor: string; tipoDato: string }[];
   accionIds?: number[];
 }

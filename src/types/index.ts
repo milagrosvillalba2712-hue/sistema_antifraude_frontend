@@ -1,4 +1,21 @@
-export type Rol = 'ADMINISTRADOR' | 'SUPERVISOR' | 'ANALISTA' | 'AUDITOR';
+export type Rol =
+  | 'ANALISTA'
+  | 'AUDITOR'
+  | 'ADMIN_GENERAL'
+  | 'ADMIN_EMPRESA'
+  | 'GERENTE_SUPERVISOR';
+
+export type Permission =
+  | 'EMPRESAS_VER' | 'EMPRESAS_EDITAR'
+  | 'LICENCIAS_VER' | 'LICENCIAS_GESTIONAR'
+  | 'PAGOS_VER' | 'PAGOS_GESTIONAR'
+  | 'USUARIOS_VER' | 'USUARIOS_CREAR' | 'USUARIOS_EDITAR'
+  | 'REGLAS_VER' | 'REGLAS_CREAR' | 'REGLAS_EDITAR' | 'REGLAS_ACTIVAR'
+  | 'CATALOGOS_VER' | 'CATALOGOS_EDITAR'
+  | 'ALERTAS_VER' | 'ALERTAS_ASIGNAR' | 'ALERTAS_RESOLVER'
+  | 'CASOS_VER' | 'CASOS_GESTIONAR' | 'CASOS_APROBAR'
+  | 'REPORTES_VER' | 'REPORTES_GENERAR'
+  | 'AUDITORIA_VER';
 
 export type EstadoAlerta = 'NUEVA' | 'ASIGNADA' | 'EN_REVISION' | 'CERRADA';
 
@@ -30,6 +47,9 @@ export interface LoginResponse {
   tipo: string;
   email: string;
   rol: Rol;
+  empresaId: number | null;
+  rolId: number | null;
+  permisos: Permission[];
 }
 
 export interface Usuario {
@@ -38,6 +58,8 @@ export interface Usuario {
   nombreCompleto: string;
   email: string;
   rol: Rol;
+  empresaId: number | null;
+  empresaNombre?: string | null;
   activo: boolean;
   intentosFallidos: number;
   bloqueadoHasta: string | null;
@@ -51,6 +73,7 @@ export interface UsuarioRequest {
   email: string;
   password?: string;
   rol: Rol;
+  empresaId?: number | string | null;
 }
 
 export interface Pais {
@@ -206,6 +229,56 @@ export interface Alerta {
   asignadoNombre?: string;
   fechaGeneracion: string;
   fechaResolucion: string | null;
+}
+
+export interface AnalistaDisponible {
+  usuarioId: number;
+  nombre: string;
+  email: string;
+  estado: string;
+  alertasActivas: number;
+  disponible: boolean;
+}
+
+export interface ResolucionAlertaRequest {
+  resultado: 'FRAUDE_CONFIRMADO' | 'FALSO_POSITIVO' | 'OPERACION_JUSTIFICADA' | 'ESCALAR' | 'ROS_REQUERIDO';
+  conclusion: string;
+  decision: string;
+  justificacion: string;
+  evidenciaDescripcion: string;
+  contactoCliente: string;
+  fondosRetenidos: boolean;
+  movimientoLiberable: boolean;
+  requiereRos: boolean;
+  requiereBloqueo: boolean;
+  requiereEscalamientoLegal: boolean;
+}
+
+export interface ResolucionAlerta extends ResolucionAlertaRequest {
+  id: number;
+  alertaId: number;
+  usuarioId: number | null;
+  usuarioNombre: string | null;
+  fechaResolucion: string;
+}
+
+export interface AlertaDetalle {
+  alerta: Alerta;
+  transaccion: Record<string, unknown>;
+  regla: Record<string, unknown>;
+  cliente: Record<string, unknown>;
+  historialTransaccional: Record<string, unknown>[];
+  serviciosExternos: Record<string, unknown>[];
+  timeline: TimelineEvent[];
+  resolucion: ResolucionAlerta | null;
+}
+
+export interface RuleFactDefinition {
+  fact: string;
+  etiqueta: string;
+  tipo: 'NUMERICO' | 'CATALOGO' | 'BOOLEANO' | 'EXISTENCIA';
+  catalogo: string | null;
+  operadores: CondicionRegla['operador'][];
 }
 
 export interface AlertaRequest {

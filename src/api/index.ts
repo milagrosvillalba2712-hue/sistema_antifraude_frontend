@@ -12,3 +12,4 @@ export { casesApi } from './cases';
 export { motorApi } from './motor';
 export { escenariosApi } from './escenarios';
 export { ruleEngineApi } from './ruleEngine';
+export { licensingApi } from './licensing';

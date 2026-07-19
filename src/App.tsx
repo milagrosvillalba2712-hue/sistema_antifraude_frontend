@@ -11,6 +11,8 @@ import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Profile from './pages/Profile';
 import MotorHistorial from './pages/MotorHistorial';
+import AdminGeneral from './pages/AdminGeneral';
+import AdminEmpresa from './pages/AdminEmpresa';
 
 function App() {
   return (
@@ -31,14 +33,26 @@ function App() {
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'SUPERVISOR']} />}>
+        <Route element={<ProtectedRoute requiredPermissions={['EMPRESAS_VER']} />}>
+          <Route element={<AuthenticatedLayout />}>
+            <Route path="/admin-general" element={<AdminGeneral />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute requiredPermissions={['LICENCIAS_VER']} />}>
+          <Route element={<AuthenticatedLayout />}>
+            <Route path="/admin-empresa" element={<AdminEmpresa />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute requiredPermissions={['REGLAS_VER']} />}>
           <Route element={<AuthenticatedLayout />}>
             <Route path="/rules" element={<Navigate to="/rule-engine" replace />} />
             <Route path="/rule-engine" element={<RuleEngine />} />
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']} />}>
+        <Route element={<ProtectedRoute requiredPermissions={['USUARIOS_VER']} />}>
           <Route element={<AuthenticatedLayout />}>
             <Route path="/users" element={<Users />} />
           </Route>

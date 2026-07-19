@@ -5,7 +5,7 @@ import type { LoginRequest } from '../types';
 
 export const useAuth = () => {
   const navigate = useNavigate();
-  const { login, logout, isAuthenticated, user, hasRole } = useAuthStore();
+  const { login, logout, isAuthenticated, user, hasPermission } = useAuthStore();
 
   const signIn = async (data: LoginRequest) => {
     try {
@@ -13,8 +13,17 @@ export const useAuth = () => {
       login(response.token, {
         email: response.email,
         rol: response.rol,
+        empresaId: response.empresaId,
+        rolId: response.rolId,
+        permisos: response.permisos || [],
       });
-      navigate('/dashboard');
+      if (response.rol === 'ADMIN_GENERAL') {
+        navigate('/admin-general');
+      } else if (response.rol === 'ADMIN_EMPRESA') {
+        navigate('/admin-empresa');
+      } else {
+        navigate('/dashboard');
+      }
       return { success: true };
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
@@ -35,6 +44,6 @@ export const useAuth = () => {
     signOut,
     isAuthenticated,
     user,
-    hasRole,
+    hasPermission,
   };
 };

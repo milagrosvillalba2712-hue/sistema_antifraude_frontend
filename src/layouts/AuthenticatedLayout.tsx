@@ -18,10 +18,11 @@ import {
 import { useAuthStore } from '../store';
 import { cn } from '../utils';
 import { RegulaIcon } from '../components/common';
+import { alertsApi } from '../api';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'] },
-  { name: 'Alertas', href: '/alerts', icon: AlertTriangle, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'], badge: 24 },
+  { name: 'Alertas', href: '/alerts', icon: AlertTriangle, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'], badge: true },
   { name: 'Motor de Reglas', href: '/rule-engine', icon: Workflow, roles: ['ADMINISTRADOR', 'SUPERVISOR'] },
   { name: 'Motor Historial', href: '/motor/historial', icon: History, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'AUDITOR'] },
   { name: 'KYC', href: '/kyc', icon: Search, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'] },
@@ -33,6 +34,7 @@ const navigation = [
 export const AuthenticatedLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
+  const [unassignedAlerts, setUnassignedAlerts] = useState(0);
   const location = useLocation();
   const { user, hasRole } = useAuthStore();
 
@@ -43,6 +45,24 @@ export const AuthenticatedLayout = () => {
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', String(collapsed));
   }, [collapsed]);
+
+  useEffect(() => {
+    let active = true;
+    const loadUnassignedAlerts = async () => {
+      try {
+        const count = await alertsApi.countUnassigned();
+        if (active) setUnassignedAlerts(count);
+      } catch {
+        if (active) setUnassignedAlerts(0);
+      }
+    };
+    loadUnassignedAlerts();
+    const interval = window.setInterval(loadUnassignedAlerts, 30000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   const getUserInitials = () => {
     if (user?.email) {
@@ -98,9 +118,9 @@ export const AuthenticatedLayout = () => {
                   <span className={cn('text-body-md', isActive ? 'font-semibold' : '')}>
                     {item.name}
                   </span>
-                  {item.badge && (
+                  {item.badge && unassignedAlerts > 0 && (
                     <span className="ml-auto bg-critical text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                      {item.badge}
+                      {unassignedAlerts}
                     </span>
                   )}
                 </Link>
@@ -163,9 +183,9 @@ export const AuthenticatedLayout = () => {
                   {!collapsed && <span className={cn('text-body-md', isActive ? 'font-semibold' : '')}>
                     {item.name}
                   </span>}
-                  {!collapsed && item.badge && (
+                  {!collapsed && item.badge && unassignedAlerts > 0 && (
                     <span className="ml-auto bg-critical text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                      {item.badge}
+                      {unassignedAlerts}
                     </span>
                   )}
                 </Link>

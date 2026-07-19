@@ -17,13 +17,13 @@ export const alertsApi = {
     return response.data;
   },
 
-  asignar: async (id: number, analistaId?: number): Promise<Alerta> => {
-    const response = await api.post<Alerta>(`/alertas/${id}/asignar`, { analistaId });
-    return response.data;
+  countUnassigned: async (): Promise<number> => {
+    const response = await api.get<{ count: number }>('/alertas/sin-asignar/count');
+    return response.data.count;
   },
 
-  autoAsignar: async (id: number): Promise<Alerta> => {
-    const response = await api.post<Alerta>(`/alertas/${id}/auto-assign`);
+  asignar: async (id: number, analistaId?: number): Promise<Alerta> => {
+    const response = await api.post<Alerta>(`/alertas/${id}/asignar`, { analistaId });
     return response.data;
   },
 

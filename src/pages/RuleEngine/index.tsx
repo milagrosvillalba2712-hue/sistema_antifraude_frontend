@@ -30,6 +30,20 @@ import type {
 
 type Tab = 'reglas' | 'constructor' | 'entidades' | 'simulador';
 type FormMode = 'create' | 'edit' | 'detail';
+type RuleFormMode = 'edit' | 'detail';
+type SelectOption = [string, string];
+type RelationOptions = Record<string, SelectOption[]>;
+type RuleDraft = {
+  escenarioId: number;
+  codigo: string;
+  nombre: string;
+  descripcion: string;
+  severidad: SeveridadRegla;
+  prioridad: number;
+  score: number;
+  estado: EstadoRegla;
+  accion: string;
+};
 type SimForm = {
   productoCodigo: string;
   canalCodigo: string;
@@ -49,7 +63,17 @@ const tabs: Array<{ id: Tab; label: string; icon: typeof ListChecks }> = [
 ];
 
 const facts = ['monto', 'moneda', 'canal', 'paisOrigen', 'paisDestino', 'documento', 'pep', 'observado', 'listas', 'horario', 'frecuencia'];
-const operadores = ['==', '!=', '>', '>=', '<', '<=', 'in', 'between', 'exists'] as const;
+const operadores: Array<{ value: CondicionRegla['operador']; label: string }> = [
+  { value: '==', label: 'Es igual a' },
+  { value: '!=', label: 'Es diferente de' },
+  { value: '>', label: 'Es mayor que' },
+  { value: '>=', label: 'Es mayor o igual que' },
+  { value: '<', label: 'Es menor que' },
+  { value: '<=', label: 'Es menor o igual que' },
+  { value: 'in', label: 'Esta dentro de una lista' },
+  { value: 'between', label: 'Esta entre dos valores' },
+  { value: 'exists', label: 'Existe o esta informado' },
+];
 const hiddenOnCreate = new Set(['id', 'fechaCreacion', 'fechaModificacion', 'createdAt', 'updatedAt']);
 const pageSizeOptions = [5, 10, 20, 50];
 
@@ -111,6 +135,8 @@ const RuleEngine = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [entitySearch, setEntitySearch] = useState('');
+  const [rowSearch, setRowSearch] = useState('');
+  const [rowFieldFilter, setRowFieldFilter] = useState('');
   const [entityPage, setEntityPage] = useState(1);
   const [entityPageSize, setEntityPageSize] = useState(10);
   const [ruleSearch, setRuleSearch] = useState('');
@@ -120,6 +146,11 @@ const RuleEngine = () => {
   const [rulePageSize, setRulePageSize] = useState(10);
   const [formMode, setFormMode] = useState<FormMode | null>(null);
   const [formData, setFormData] = useState<EntityRecord>({});
+  const [relationOptions, setRelationOptions] = useState<RelationOptions>({});
+  const [ruleDrawerMode, setRuleDrawerMode] = useState<RuleFormMode | null>(null);
+  const [selectedRule, setSelectedRule] = useState<ReglaRiesgo | null>(null);
+  const [ruleDraft, setRuleDraft] = useState<RuleDraft | null>(null);
+  const [ruleDraftConditions, setRuleDraftConditions] = useState<CondicionRegla[]>([]);
   const [simResult, setSimResult] = useState<SimuladorResponse | null>(null);
   const [condiciones, setCondiciones] = useState<CondicionRegla[]>([
     { fact: 'monto', operador: '>', valor: 10000 },
@@ -152,10 +183,13 @@ const RuleEngine = () => {
   }, [entities, entitySearch]);
 
   const visibleRows = useMemo(() => {
-    const query = entitySearch.toLowerCase();
+    const query = rowSearch.toLowerCase();
     if (!query) return rows;
-    return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(query));
-  }, [rows, entitySearch]);
+    return rows.filter((row) => {
+      if (rowFieldFilter) return String(row[rowFieldFilter] ?? '').toLowerCase().includes(query);
+      return JSON.stringify(row).toLowerCase().includes(query);
+    });
+  }, [rows, rowSearch, rowFieldFilter]);
 
   const filteredRules = useMemo(() => {
     const query = ruleSearch.toLowerCase();
@@ -182,6 +216,11 @@ const RuleEngine = () => {
   }, [condiciones, ruleForm.score, ruleForm.accion]);
 
   const selectedSummary = entities.find((entity) => entity.key === selectedEntity || entity.table === selectedEntity);
+  const rowFilterFields = useMemo(() => {
+    const names = new Set<string>();
+    rows.slice(0, 50).forEach((row) => Object.keys(row).forEach((key) => names.add(key)));
+    return Array.from(names);
+  }, [rows]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -189,6 +228,7 @@ const RuleEngine = () => {
       const [ruleData, entityData] = await Promise.all([rulesApi.getAll(), ruleEngineApi.getEntities()]);
       setRules(ruleData);
       setEntities(entityData);
+      await loadOptionsFor(['escenario', 'accion']);
       if (!entityData.some((item) => item.key === selectedEntity || item.table === selectedEntity) && entityData[0]) {
         setSelectedEntity(entityData[0].key);
       }
@@ -205,6 +245,26 @@ const RuleEngine = () => {
     ]);
     setSchema(schemaData);
     setRows(rowData);
+    await loadOptionsFor(schemaData.fields.filter((field) => field.relation && field.relationType).map((field) => field.relationType as string));
+  };
+
+  const loadOptionsFor = async (entityKeys: string[]) => {
+    const unique = Array.from(new Set(entityKeys.filter(Boolean)));
+    const missing = unique.filter((key) => !relationOptions[key]);
+    if (!missing.length) return;
+    const loadedEntries = await Promise.all(missing.map(async (key) => {
+      try {
+        const items = await ruleEngineApi.getEntityRows(key);
+        return [key, items.map((item) => [key === 'accion' ? String(item.codigo ?? item.id) : String(item.id), optionLabel(item)] as SelectOption)] as const;
+      } catch (error) {
+        console.warn(`No se pudieron cargar opciones para ${key}`, error);
+        return [key, []] as const;
+      }
+    }));
+    setRelationOptions((current) => ({
+      ...current,
+      ...Object.fromEntries(loadedEntries),
+    }));
   };
 
   useEffect(() => {
@@ -217,7 +277,12 @@ const RuleEngine = () => {
 
   useEffect(() => {
     setEntityPage(1);
-  }, [selectedEntity, entitySearch, rows.length]);
+  }, [selectedEntity, rowSearch, rowFieldFilter, rows.length]);
+
+  useEffect(() => {
+    setRowSearch('');
+    setRowFieldFilter('');
+  }, [selectedEntity]);
 
   useEffect(() => {
     setRulePage(1);
@@ -291,6 +356,35 @@ const RuleEngine = () => {
     await loadAll();
   };
 
+  const openRuleDrawer = (mode: RuleFormMode, rule: ReglaRiesgo) => {
+    setSelectedRule(rule);
+    setRuleDrawerMode(mode);
+    setRuleDraft(toRuleDraft(rule));
+    setRuleDraftConditions(parseRuleConditions(rule));
+  };
+
+  const saveRuleDraft = async () => {
+    if (!selectedRule || !ruleDraft || ruleDrawerMode !== 'edit') return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      await rulesApi.update(selectedRule.id, {
+        ...ruleDraft,
+        condiciones: { combinador: 'ALL', items: ruleDraftConditions },
+        acciones: [{ codigo: ruleDraft.accion, descripcion: ruleDraft.accion.replaceAll('_', ' ') }],
+      });
+      setMessage('Regla actualizada correctamente.');
+      setRuleDrawerMode(null);
+      setSelectedRule(null);
+      await loadAll();
+    } catch (error) {
+      setMessage('No se pudo actualizar la regla.');
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const runSimulation = async () => {
     setSaving(true);
     try {
@@ -356,6 +450,7 @@ const RuleEngine = () => {
           setEstado={setRuleEstado}
           setSeveridad={setRuleSeveridad}
           toggleRule={toggleRule}
+          openRule={openRuleDrawer}
         />
       )}
       {activeTab === 'constructor' && (
@@ -367,7 +462,8 @@ const RuleEngine = () => {
           preview={preview}
           saving={saving}
           saveRule={saveRule}
-          escenarioOptions={rowsForEntity(entities, 'escenario')}
+          escenarioOptions={relationOptions.escenario || []}
+          accionOptions={relationOptions.accion || []}
         />
       )}
       {activeTab === 'entidades' && (
@@ -421,6 +517,28 @@ const RuleEngine = () => {
                 Nuevo Registro
               </button>
             </div>
+            <div className="grid gap-3 border-b border-surface-container-highest p-4 md:grid-cols-[1fr_220px]">
+              <label className="block text-sm font-medium text-secondary">
+                Buscar Registros
+                <div className="mt-1 flex items-center gap-2 rounded-md bg-surface-container-low px-3 py-2">
+                  <Search className="h-4 w-4 text-secondary/50" />
+                  <input
+                    value={rowSearch}
+                    onChange={(event) => setRowSearch(event.target.value)}
+                    placeholder="Buscar dentro de la tabla seleccionada..."
+                    className="w-full bg-transparent text-sm outline-none"
+                  />
+                </div>
+                <span className="mt-1 block text-xs font-normal text-secondary/50">Busca en todos los campos o en el campo seleccionado.</span>
+              </label>
+              <Select
+                label="Filtrar Por Campo"
+                value={rowFieldFilter}
+                onChange={setRowFieldFilter}
+                options={[['', 'Todos los campos'], ...rowFilterFields.map((field) => [field, titleize(field)] as SelectOption)]}
+                help="Limita la búsqueda a una columna concreta."
+              />
+            </div>
             <EntityTable rows={paginatedRows} schema={schema} openForm={openForm} deleteEntity={deleteEntity} saving={saving} />
             <PaginationControls
               total={visibleRows.length}
@@ -442,6 +560,25 @@ const RuleEngine = () => {
           setData={setFormData}
           close={() => setFormMode(null)}
           save={saveEntity}
+          saving={saving}
+          relationOptions={relationOptions}
+        />
+      )}
+      {ruleDrawerMode && selectedRule && ruleDraft && (
+        <RuleDrawer
+          mode={ruleDrawerMode}
+          rule={selectedRule}
+          draft={ruleDraft}
+          setDraft={setRuleDraft}
+          condiciones={ruleDraftConditions}
+          setCondiciones={setRuleDraftConditions}
+          escenarioOptions={relationOptions.escenario || []}
+          accionOptions={relationOptions.accion || []}
+          close={() => {
+            setRuleDrawerMode(null);
+            setSelectedRule(null);
+          }}
+          save={saveRuleDraft}
           saving={saving}
         />
       )}
@@ -469,6 +606,7 @@ const RulesPanel = ({
   setEstado,
   setSeveridad,
   toggleRule,
+  openRule,
 }: {
   rules: ReglaRiesgo[];
   total: number;
@@ -483,6 +621,7 @@ const RulesPanel = ({
   setEstado: (value: EstadoRegla | '') => void;
   setSeveridad: (value: SeveridadRegla | '') => void;
   toggleRule: (rule: ReglaRiesgo) => void;
+  openRule: (mode: RuleFormMode, rule: ReglaRiesgo) => void;
 }) => (
   <section className="overflow-hidden rounded-lg border border-surface-container-highest bg-white">
     <div className="grid gap-3 border-b border-surface-container-highest p-4 xl:grid-cols-[1fr_180px_180px_150px]">
@@ -534,9 +673,13 @@ const RulesPanel = ({
             <span className="text-secondary">{rule.escenarioNombre || '-'}</span>
             <span className="font-semibold text-secondary">{rule.score}</span>
             <span className="text-xs font-bold text-secondary">{titleize(rule.estado)}</span>
-            <button onClick={() => toggleRule(rule)} className="rounded-full p-2 text-secondary hover:bg-surface-container-low" title={rule.estado === 'ACTIVA' ? 'Desactivar regla' : 'Activar regla'}>
-              <Power className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <IconButton title="Ver Detalle" onClick={() => openRule('detail', rule)} icon={Eye} />
+              <IconButton title="Editar Regla" onClick={() => openRule('edit', rule)} icon={Pencil} />
+              <button onClick={() => toggleRule(rule)} className="rounded-md p-2 text-secondary hover:bg-surface-container-low" title={rule.estado === 'ACTIVA' ? 'Desactivar regla' : 'Activar regla'}>
+                <Power className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         ))}
         {!rules.length && (
@@ -548,25 +691,23 @@ const RulesPanel = ({
   </section>
 );
 
-const ConstructorPanel = ({ ruleForm, setRuleForm, condiciones, setCondiciones, preview, saving, saveRule }: {
-  ruleForm: {
-    escenarioId: number; codigo: string; nombre: string; descripcion: string; severidad: SeveridadRegla;
-    prioridad: number; score: number; estado: EstadoRegla; accion: string;
-  };
-  setRuleForm: (value: typeof ruleForm) => void;
+const ConstructorPanel = ({ ruleForm, setRuleForm, condiciones, setCondiciones, preview, saving, saveRule, escenarioOptions, accionOptions }: {
+  ruleForm: RuleDraft;
+  setRuleForm: (value: RuleDraft) => void;
   condiciones: CondicionRegla[];
   setCondiciones: (value: CondicionRegla[]) => void;
   preview: string;
   saving: boolean;
   saveRule: () => void;
-  escenarioOptions: Array<[string, string]>;
+  escenarioOptions: SelectOption[];
+  accionOptions: SelectOption[];
 }) => (
   <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
     <div className="space-y-4 rounded-lg border border-surface-container-highest bg-white p-5">
       <div className="grid gap-4 md:grid-cols-3">
         <Field label="Código" value={ruleForm.codigo} onChange={(v) => setRuleForm({ ...ruleForm, codigo: v })} placeholder="Ej. RG_MONTO_ALTO_V1" help="Identificador único de la regla. Usa un código corto y estable." />
         <Field label="Nombre" value={ruleForm.nombre} onChange={(v) => setRuleForm({ ...ruleForm, nombre: v })} placeholder="Ej. Transferencia internacional alta" help="Nombre visible para analistas y supervisores." />
-        <Field label="Escenario ID" type="number" value={String(ruleForm.escenarioId || '')} onChange={(v) => setRuleForm({ ...ruleForm, escenarioId: Number(v) })} placeholder="Ej. 1" help="ID del escenario donde se agrupa esta regla." />
+        <Select label="Escenario" value={String(ruleForm.escenarioId || '')} onChange={(v) => setRuleForm({ ...ruleForm, escenarioId: Number(v) })} options={[['', 'Selecciona un escenario'], ...escenarioOptions]} help="Escenario existente donde se agrupa esta regla." />
         <Select label="Severidad" value={ruleForm.severidad} onChange={(v) => setRuleForm({ ...ruleForm, severidad: v as SeveridadRegla })} options={['BAJA', 'MEDIA', 'ALTA', 'CRITICA'].map((v) => [v, titleize(v)])} help="Nivel cualitativo de impacto de la regla." />
         <Field label="Prioridad" type="number" value={String(ruleForm.prioridad)} onChange={(v) => setRuleForm({ ...ruleForm, prioridad: Number(v) })} placeholder="Ej. 1" help="Orden de evaluación. Menor número implica mayor prioridad." />
         <Field label="Score" type="number" value={String(ruleForm.score)} onChange={(v) => setRuleForm({ ...ruleForm, score: Number(v) })} placeholder="Ej. 40" help="Puntos que suma si se cumplen las condiciones." />
@@ -585,7 +726,7 @@ const ConstructorPanel = ({ ruleForm, setRuleForm, condiciones, setCondiciones, 
         {condiciones.map((condition, index) => (
           <div key={index} className="grid gap-2 rounded-md border border-surface-container-highest p-3 md:grid-cols-[1fr_120px_1fr_44px]">
             <Select label="Dato" value={condition.fact} onChange={(v) => setCondiciones(updateCondition(condiciones, index, { fact: v }))} options={facts.map((v) => [v, titleize(v)])} help="Dato de la transacción o del cliente que evaluará el motor." />
-            <Select label="Operador" value={condition.operador} onChange={(v) => setCondiciones(updateCondition(condiciones, index, { operador: v as CondicionRegla['operador'] }))} options={operadores.map((v) => [v, v])} help="Comparación aplicada contra el valor." />
+            <Select label="Operador" value={condition.operador} onChange={(v) => setCondiciones(updateCondition(condiciones, index, { operador: v as CondicionRegla['operador'] }))} options={operadores.map((operator) => [operator.value, operator.label])} help="Comparación aplicada contra el valor." />
             <Field label="Valor" value={String(condition.valor)} onChange={(v) => setCondiciones(updateCondition(condiciones, index, { valor: parseValue(v) }))} placeholder="Ej. 10000, USD o true" help="Usa comas para listas o rangos cuando aplique." />
             <button onClick={() => setCondiciones(condiciones.filter((_, current) => current !== index))} className="mt-6 rounded-md p-2 text-critical hover:bg-critical/10" title="Quitar">
               <X className="h-4 w-4" />
@@ -601,7 +742,11 @@ const ConstructorPanel = ({ ruleForm, setRuleForm, condiciones, setCondiciones, 
     <aside className="space-y-4 rounded-lg border border-surface-container-highest bg-white p-5">
       <h2 className="font-semibold text-secondary">Vista previa</h2>
       <p className="rounded-md bg-surface-container-low p-3 text-sm leading-6 text-secondary">{preview}</p>
-      <Field label="Acción Sugerida" value={ruleForm.accion} onChange={(v) => setRuleForm({ ...ruleForm, accion: v })} placeholder="Ej. REVISION_MANUAL" help="Acción que verá el analista cuando la regla se cumpla." />
+      {accionOptions.length ? (
+        <Select label="Acción Sugerida" value={ruleForm.accion} onChange={(v) => setRuleForm({ ...ruleForm, accion: v })} options={accionOptions} help="Acción existente que verá el analista cuando la regla se cumpla." />
+      ) : (
+        <Field label="Acción Sugerida" value={ruleForm.accion} onChange={(v) => setRuleForm({ ...ruleForm, accion: v })} placeholder="Ej. REVISION_MANUAL" help="Acción que verá el analista cuando la regla se cumpla." />
+      )}
       <button onClick={saveRule} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-md bg-primary-container px-4 py-3 text-sm font-bold text-white disabled:opacity-50">
         <Save className="h-4 w-4" />
         Guardar Regla
@@ -609,6 +754,101 @@ const ConstructorPanel = ({ ruleForm, setRuleForm, condiciones, setCondiciones, 
     </aside>
   </section>
 );
+
+const RuleDrawer = ({ mode, rule, draft, setDraft, condiciones, setCondiciones, escenarioOptions, accionOptions, close, save, saving }: {
+  mode: RuleFormMode;
+  rule: ReglaRiesgo;
+  draft: RuleDraft;
+  setDraft: (value: RuleDraft) => void;
+  condiciones: CondicionRegla[];
+  setCondiciones: (value: CondicionRegla[]) => void;
+  escenarioOptions: SelectOption[];
+  accionOptions: SelectOption[];
+  close: () => void;
+  save: () => void;
+  saving: boolean;
+}) => {
+  const readonly = mode === 'detail';
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/40">
+      <div className="h-full w-full max-w-2xl overflow-y-auto bg-white shadow-xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-surface-container-highest bg-white p-5">
+          <div>
+            <h2 className="text-lg font-semibold text-secondary">{readonly ? 'Detalle De La Regla' : 'Editar Regla'}</h2>
+            <p className="text-xs text-secondary/60">{rule.codigo} - Versión {rule.version}</p>
+          </div>
+          <button onClick={close} className="rounded-md p-2 text-secondary hover:bg-surface-container-low"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="space-y-5 p-5">
+          {readonly ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              <ReadOnly label="ID" value={String(rule.id)} />
+              <ReadOnly label="Código" value={rule.codigo || '-'} />
+              <ReadOnly label="Nombre" value={rule.nombre || '-'} />
+              <ReadOnly label="Escenario" value={rule.escenarioNombre || '-'} />
+              <ReadOnly label="Estado" value={titleize(rule.estado)} />
+              <ReadOnly label="Severidad" value={titleize(rule.severidad)} />
+              <ReadOnly label="Prioridad" value={String(rule.prioridad ?? '-')} />
+              <ReadOnly label="Score" value={String(rule.score ?? '-')} />
+              <ReadOnly label="Descripción" value={rule.descripcion || '-'} />
+              <ReadOnly label="Condición Legible" value={rule.condicion || '-'} />
+              <ReadOnly label="Condiciones JSON" value={rule.condicionesJson || '-'} />
+              <ReadOnly label="Acciones JSON" value={rule.accionesJson || '-'} />
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Código" value={draft.codigo} onChange={(value) => setDraft({ ...draft, codigo: value })} placeholder="Ej. RG_MONTO_ALTO_V1" help="Identificador único de esta versión de regla." />
+                <Field label="Nombre" value={draft.nombre} onChange={(value) => setDraft({ ...draft, nombre: value })} placeholder="Nombre visible de la regla" help="Nombre usado en listados, alertas e historial." />
+                <Select label="Escenario" value={String(draft.escenarioId || '')} onChange={(value) => setDraft({ ...draft, escenarioId: Number(value) })} options={[['', 'Selecciona un escenario'], ...escenarioOptions]} help="Escenario existente donde se agrupa la regla." />
+                <Select label="Estado" value={draft.estado} onChange={(value) => setDraft({ ...draft, estado: value as EstadoRegla })} options={[['BORRADOR', 'Borrador'], ['EN_PRUEBA', 'En Prueba'], ['ACTIVA', 'Activa'], ['INACTIVA', 'Inactiva']]} help="Estado operativo de la regla." />
+                <Select label="Severidad" value={draft.severidad} onChange={(value) => setDraft({ ...draft, severidad: value as SeveridadRegla })} options={['BAJA', 'MEDIA', 'ALTA', 'CRITICA'].map((value) => [value, titleize(value)])} help="Impacto de riesgo cuando la regla se cumple." />
+                <Field label="Prioridad" type="number" value={String(draft.prioridad)} onChange={(value) => setDraft({ ...draft, prioridad: Number(value) })} placeholder="Ej. 1" help="Orden relativo de evaluación." />
+                <Field label="Score" type="number" value={String(draft.score)} onChange={(value) => setDraft({ ...draft, score: Number(value) })} placeholder="Ej. 40" help="Puntos que aporta si se cumple." />
+                {accionOptions.length ? (
+                  <Select label="Acción Sugerida" value={draft.accion} onChange={(value) => setDraft({ ...draft, accion: value })} options={accionOptions} help="Acción sugerida para el analista." />
+                ) : (
+                  <Field label="Acción Sugerida" value={draft.accion} onChange={(value) => setDraft({ ...draft, accion: value })} placeholder="Ej. REVISION_MANUAL" help="Acción sugerida para el analista." />
+                )}
+              </div>
+              <label className="block text-sm font-medium text-secondary">
+                Descripción
+                <textarea
+                  value={draft.descripcion}
+                  onChange={(event) => setDraft({ ...draft, descripcion: event.target.value })}
+                  className="mt-1 min-h-20 w-full rounded-md bg-surface-container-low px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary-container/20"
+                  placeholder="Explica el objetivo y el riesgo cubierto por esta regla..."
+                />
+                <span className="mt-1 block text-xs font-normal text-secondary/50">Texto de ayuda para comprender la regla sin leer JSON.</span>
+              </label>
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-secondary">Condiciones</h3>
+                {condiciones.map((condition, index) => (
+                  <div key={index} className="grid gap-2 rounded-md border border-surface-container-highest p-3 md:grid-cols-[1fr_180px_1fr_44px]">
+                    <Select label="Dato" value={condition.fact} onChange={(value) => setCondiciones(updateCondition(condiciones, index, { fact: value }))} options={facts.map((value) => [value, titleize(value)])} help="Dato usado por el motor." />
+                    <Select label="Operador" value={condition.operador} onChange={(value) => setCondiciones(updateCondition(condiciones, index, { operador: value as CondicionRegla['operador'] }))} options={operadores.map((operator) => [operator.value, operator.label])} help="Comparación en lenguaje común." />
+                    <Field label="Valor" value={String(condition.valor)} onChange={(value) => setCondiciones(updateCondition(condiciones, index, { valor: parseValue(value) }))} placeholder="Ej. 10000, USD o true" help="Valor esperado para cumplir la condición." />
+                    <button onClick={() => setCondiciones(condiciones.filter((_, current) => current !== index))} className="mt-6 rounded-md p-2 text-critical hover:bg-critical/10" title="Quitar condición">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+                <button onClick={() => setCondiciones([...condiciones, { fact: 'canal', operador: '==', valor: '' }])} className="flex items-center gap-2 rounded-md border border-surface-container-highest px-3 py-2 text-sm font-semibold text-secondary">
+                  <Plus className="h-4 w-4" />
+                  Agregar Condición
+                </button>
+              </div>
+              <button onClick={save} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-md bg-primary-container px-4 py-3 text-sm font-bold text-white disabled:opacity-50">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Guardar Cambios
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const EntityTable = ({ rows, schema, openForm, deleteEntity, saving }: {
   rows: EntityRecord[];
@@ -655,7 +895,7 @@ const EntityTable = ({ rows, schema, openForm, deleteEntity, saving }: {
   );
 };
 
-const EntityDrawer = ({ schema, mode, data, setData, close, save, saving }: {
+const EntityDrawer = ({ schema, mode, data, setData, close, save, saving, relationOptions }: {
   schema: EntitySchema;
   mode: FormMode;
   data: EntityRecord;
@@ -663,6 +903,7 @@ const EntityDrawer = ({ schema, mode, data, setData, close, save, saving }: {
   close: () => void;
   save: () => void;
   saving: boolean;
+  relationOptions: RelationOptions;
 }) => {
   const readonly = mode === 'detail';
   const fields = schema.fields.filter((field) => field.editable && !hiddenOnCreate.has(field.name));
@@ -685,6 +926,7 @@ const EntityDrawer = ({ schema, mode, data, setData, close, save, saving }: {
               readonly={readonly}
               value={field.relation ? relationId(data[field.name]) ?? data[`${field.name}Id`] : data[field.name]}
               onChange={(value) => setData({ ...data, [field.relation ? `${field.name}Id` : field.name]: value })}
+              options={field.relation && field.relationType ? relationOptions[field.relationType] || [] : []}
             />
           ))}
           {!readonly && (
@@ -699,12 +941,21 @@ const EntityDrawer = ({ schema, mode, data, setData, close, save, saving }: {
   );
 };
 
-const DynamicField = ({ field, value, readonly, onChange }: { field: EntityFieldSchema; value: unknown; readonly: boolean; onChange: (value: string) => void }) => {
+const DynamicField = ({ field, value, readonly, onChange, options }: {
+  field: EntityFieldSchema;
+  value: unknown;
+  readonly: boolean;
+  onChange: (value: string) => void;
+  options: SelectOption[];
+}) => {
   const label = field.relation ? `${titleize(field.name)} ID` : titleize(field.name);
   const help = field.relation
-    ? `Ingresa el ID existente relacionado con ${titleize(field.relationType || field.name)}.`
+    ? `Selecciona un registro existente de ${titleize(field.relationType || field.name)}.`
     : fieldHelp(field);
   if (readonly) return <ReadOnly label={label} value={renderCell(value)} />;
+  if (field.relation && options.length) {
+    return <Select label={label} value={value == null ? '' : String(value)} onChange={onChange} options={[['', 'Selecciona una opción'], ...options]} help={help} />;
+  }
   return <Field label={label} value={value == null ? '' : String(value)} onChange={onChange} type={inputType(field)} placeholder={placeholderForField(field)} help={help} />;
 };
 
@@ -944,6 +1195,49 @@ const relationId = (value: unknown) => {
 };
 
 const formatValue = (value: CondicionRegla['valor']) => Array.isArray(value) ? value.join(', ') : String(value);
-const rowsForEntity = (_entities: EntitySummary[], _table: string): Array<[string, string]> => [];
+
+const optionLabel = (item: EntityRecord) => {
+  const codigo = item.codigo ?? item.codigoIso;
+  const nombre = item.nombre ?? item.descripcion ?? item.email ?? item.numeroDocumento ?? item.titulo;
+  if (codigo && nombre) return `${String(codigo)} - ${String(nombre)}`;
+  if (nombre) return String(nombre);
+  if (codigo) return String(codigo);
+  return `Registro #${String(item.id ?? '-')}`;
+};
+
+const toRuleDraft = (rule: ReglaRiesgo): RuleDraft => ({
+  escenarioId: rule.escenarioId || 0,
+  codigo: rule.codigo || '',
+  nombre: rule.nombre || '',
+  descripcion: rule.descripcion || '',
+  severidad: rule.severidad || 'MEDIA',
+  prioridad: rule.prioridad || 1,
+  score: Number(rule.score || 0),
+  estado: rule.estado || 'BORRADOR',
+  accion: firstActionCode(rule) || 'REVISION_MANUAL',
+});
+
+const parseRuleConditions = (rule: ReglaRiesgo): CondicionRegla[] => {
+  if (!rule.condicionesJson) return [{ fact: 'monto', operador: '>', valor: 10000 }];
+  try {
+    const parsed = JSON.parse(rule.condicionesJson) as { items?: CondicionRegla[] };
+    return Array.isArray(parsed.items) && parsed.items.length ? parsed.items : [{ fact: 'monto', operador: '>', valor: 10000 }];
+  } catch {
+    return [{ fact: 'monto', operador: '>', valor: 10000 }];
+  }
+};
+
+const firstActionCode = (rule: ReglaRiesgo) => {
+  if (!rule.accionesJson) return null;
+  try {
+    const parsed = JSON.parse(rule.accionesJson) as Array<{ codigo?: string }> | string[] | number[];
+    const first = Array.isArray(parsed) ? parsed[0] : null;
+    if (typeof first === 'object' && first && 'codigo' in first) return first.codigo || null;
+    if (typeof first === 'string') return first;
+  } catch {
+    return null;
+  }
+  return null;
+};
 
 export default RuleEngine;

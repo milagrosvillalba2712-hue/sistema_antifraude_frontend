@@ -10,7 +10,6 @@ import {
   Eye,
   CheckCircle,
   UserPlus,
-  Users,
   Clock,
   FileText,
   History,
@@ -136,15 +135,6 @@ const Alerts = () => {
     }
   };
 
-  const handleAutoAssign = async () => {
-    try {
-      await assignmentApi.autoAssign();
-      fetchAlerts();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -179,13 +169,6 @@ const Alerts = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleAutoAssign}
-            className="flex items-center px-4 py-2 bg-tertiary text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-bold"
-          >
-            <Users className="w-4 h-4 mr-2" />
-            Auto-asignar
-          </button>
           <button
             onClick={fetchAlerts}
             className="flex items-center px-4 py-2 text-secondary/60 hover:text-secondary transition-colors"

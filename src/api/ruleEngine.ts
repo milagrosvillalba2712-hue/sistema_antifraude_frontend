@@ -1,9 +1,14 @@
 import api from './axios';
-import type { CatalogoItem, EntityRecord, EntitySchema, EntitySummary } from '../types';
+import type { CatalogoItem, EntityRecord, EntitySchema, EntitySummary, RuleFactDefinition } from '../types';
 
 export const ruleEngineApi = {
   getCatalog: async (tipo: string): Promise<CatalogoItem[]> => {
     const response = await api.get<CatalogoItem[]>(`/rule-engine/catalogos/${tipo}`);
+    return response.data;
+  },
+
+  getFacts: async (): Promise<RuleFactDefinition[]> => {
+    const response = await api.get<RuleFactDefinition[]>('/rule-engine/facts');
     return response.data;
   },
 

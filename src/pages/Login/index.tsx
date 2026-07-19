@@ -107,10 +107,13 @@ const Login = () => {
             </p>
             <div className="space-y-1">
               <p className="text-xs text-secondary text-center">
-                <span className="font-bold">Admin:</span> admin@antifraude.com
+                <span className="font-bold">Admin General:</span> admin.general1@regula.com
               </p>
               <p className="text-xs text-secondary text-center">
-                <span className="font-bold">Analista:</span> analista@antifraude.com
+                <span className="font-bold">Admin Empresa:</span> admin.empresa1@demo.com
+              </p>
+              <p className="text-xs text-secondary text-center">
+                <span className="font-bold">Analista:</span> analista1@demo.com
               </p>
               <p className="text-xs text-secondary/60 text-center">
                 Contraseña: <span className="font-mono">password</span>

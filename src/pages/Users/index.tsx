@@ -9,7 +9,7 @@ import {
   UserX,
   X,
 } from 'lucide-react';
-import { usersApi } from '../../api';
+import { licensingApi, usersApi } from '../../api';
 import { formatDate, usuarioSchema, type UsuarioFormData } from '../../utils';
 import type { Usuario } from '../../types';
 
@@ -19,6 +19,7 @@ const Users = () => {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<Usuario | null>(null);
+  const [empresas, setEmpresas] = useState<Record<string, unknown>[]>([]);
 
   const {
     register,
@@ -33,8 +34,12 @@ const Users = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await usersApi.getAll();
+      const [data, empresasData] = await Promise.all([
+        usersApi.getAll(),
+        licensingApi.empresas(),
+      ]);
       setUsers(data);
+      setEmpresas(empresasData);
     } catch (err) {
       setError('Error al cargar los usuarios');
       console.error(err);
@@ -79,9 +84,10 @@ const Users = () => {
     setShowForm(true);
     reset({
       username: user.username,
-      nombreCompleto: user.nombreCompleto,
+      nombreCompleto: user.nombreCompleto || user.nombre || '',
       email: user.email,
       rol: user.rol,
+      empresaId: user.empresaId,
     });
   };
 
@@ -140,6 +146,7 @@ const Users = () => {
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Nombre</th>
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Email</th>
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Rol</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Empresa</th>
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Estado</th>
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Fecha</th>
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60 text-right">Acciones</th>
@@ -156,12 +163,15 @@ const Users = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase ${
-                      user.rol === 'ADMINISTRADOR'
+                      user.rol === 'ADMIN_GENERAL'
                         ? 'bg-primary-container/10 text-primary-container'
                         : 'bg-tertiary/10 text-tertiary'
                     }`}>
                       {user.rol}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary">
+                    {user.empresaNombre || 'Global'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase ${
@@ -286,13 +296,32 @@ const Users = () => {
                   className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
                 >
                   <option value="ANALISTA">Analista</option>
-                  <option value="SUPERVISOR">Supervisor</option>
-                  <option value="ADMINISTRADOR">Administrador</option>
+                  <option value="GERENTE_SUPERVISOR">Gerente Supervisor</option>
+                  <option value="ADMIN_EMPRESA">Admin Empresa</option>
+                  <option value="ADMIN_GENERAL">Admin General</option>
                   <option value="AUDITOR">Auditor</option>
                 </select>
                 {errors.rol && (
                   <p className="mt-1 text-sm text-error">{errors.rol.message}</p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-secondary mb-1">
+                  Empresa
+                </label>
+                <select
+                  {...register('empresaId')}
+                  className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
+                >
+                  <option value="">Global / Sin empresa</option>
+                  {empresas.map((empresa) => (
+                    <option key={String(empresa.id)} value={String(empresa.id)}>
+                      {String(empresa.codigo ?? empresa.id)} - {String(empresa.nombre ?? '')}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-secondary/50">Admin General puede quedar global; los demas roles deben asignarse a una empresa.</p>
               </div>
 
               <div className="flex justify-end space-x-3 pt-4">

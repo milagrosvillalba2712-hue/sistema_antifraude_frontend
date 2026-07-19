@@ -14,6 +14,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Workflow,
+  Building2,
+  BadgeCheck,
 } from 'lucide-react';
 import { useAuthStore } from '../store';
 import { cn } from '../utils';
@@ -21,14 +23,16 @@ import { RegulaIcon } from '../components/common';
 import { alertsApi } from '../api';
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'] },
-  { name: 'Alertas', href: '/alerts', icon: AlertTriangle, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'], badge: true },
-  { name: 'Motor de Reglas', href: '/rule-engine', icon: Workflow, roles: ['ADMINISTRADOR', 'SUPERVISOR'] },
-  { name: 'Motor Historial', href: '/motor/historial', icon: History, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'AUDITOR'] },
-  { name: 'KYC', href: '/kyc', icon: Search, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'] },
-  { name: 'Reportes', href: '/reports', icon: FileText, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'] },
-  { name: 'Usuarios', href: '/users', icon: Users, roles: ['ADMINISTRADOR'] },
-  { name: 'Mi Perfil', href: '/profile', icon: User, roles: ['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'] },
+  { name: 'Admin General', href: '/admin-general', icon: Building2, permission: 'EMPRESAS_VER' },
+  { name: 'Admin Empresa', href: '/admin-empresa', icon: BadgeCheck, permission: 'LICENCIAS_VER' },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'ALERTAS_VER' },
+  { name: 'Alertas', href: '/alerts', icon: AlertTriangle, permission: 'ALERTAS_VER', badge: true },
+  { name: 'Motor de Reglas', href: '/rule-engine', icon: Workflow, permission: 'REGLAS_VER' },
+  { name: 'Motor Historial', href: '/motor/historial', icon: History, permission: 'AUDITORIA_VER' },
+  { name: 'KYC', href: '/kyc', icon: Search, permission: 'ALERTAS_VER' },
+  { name: 'Reportes', href: '/reports', icon: FileText, permission: 'REPORTES_VER' },
+  { name: 'Usuarios', href: '/users', icon: Users, permission: 'USUARIOS_VER' },
+  { name: 'Mi Perfil', href: '/profile', icon: User },
 ];
 
 export const AuthenticatedLayout = () => {
@@ -36,11 +40,9 @@ export const AuthenticatedLayout = () => {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
   const [unassignedAlerts, setUnassignedAlerts] = useState(0);
   const location = useLocation();
-  const { user, hasRole } = useAuthStore();
+  const { user, hasPermission } = useAuthStore();
 
-  const filteredNavigation = navigation.filter((item) =>
-    item.roles.some((role) => hasRole(role as 'ADMINISTRADOR' | 'SUPERVISOR' | 'ANALISTA' | 'AUDITOR'))
-  );
+  const filteredNavigation = navigation.filter((item) => !item.permission || hasPermission(item.permission as never));
 
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', String(collapsed));

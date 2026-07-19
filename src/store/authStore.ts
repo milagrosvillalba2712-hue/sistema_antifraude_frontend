@@ -1,10 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Rol } from '../types';
+import type { Permission, Rol } from '../types';
 
 interface User {
   email: string;
   rol: Rol;
+  empresaId?: number | null;
+  rolId?: number | null;
+  permisos?: Permission[];
 }
 
 interface AuthState {
@@ -13,7 +16,7 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
-  hasRole: (role: Rol) => boolean;
+  hasPermission: (permission: Permission) => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -31,9 +34,9 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('user');
         set({ token: null, user: null, isAuthenticated: false });
       },
-      hasRole: (role) => {
+      hasPermission: (permission) => {
         const { user } = get();
-        return user?.rol === role;
+        return user?.permisos?.includes(permission) ?? false;
       },
     }),
     {

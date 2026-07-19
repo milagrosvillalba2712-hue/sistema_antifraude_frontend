@@ -1,5 +1,13 @@
 import api from './axios';
-import type { Alerta, HistorialAsignacion, TimelineEvent } from '../types';
+import type {
+  Alerta,
+  AlertaDetalle,
+  AnalistaDisponible,
+  HistorialAsignacion,
+  ResolucionAlerta,
+  ResolucionAlertaRequest,
+  TimelineEvent,
+} from '../types';
 
 export const alertsApi = {
   getAll: async (): Promise<Alerta[]> => {
@@ -9,6 +17,11 @@ export const alertsApi = {
 
   getById: async (id: number): Promise<Alerta> => {
     const response = await api.get<Alerta>(`/alertas/${id}`);
+    return response.data;
+  },
+
+  getDetail: async (id: number): Promise<AlertaDetalle> => {
+    const response = await api.get<AlertaDetalle>(`/alertas/${id}/detalle`);
     return response.data;
   },
 
@@ -27,6 +40,16 @@ export const alertsApi = {
     return response.data;
   },
 
+  autoasignarme: async (id: number): Promise<Alerta> => {
+    const response = await api.post<Alerta>(`/alertas/${id}/autoasignarme`);
+    return response.data;
+  },
+
+  getAnalistasDisponibles: async (): Promise<AnalistaDisponible[]> => {
+    const response = await api.get<AnalistaDisponible[]>('/alertas/analistas-disponibles');
+    return response.data;
+  },
+
   reasignar: async (id: number, analistaId: number, motivo?: string): Promise<Alerta> => {
     const response = await api.post<Alerta>(`/alertas/${id}/reassign`, { analistaId, motivo });
     return response.data;
@@ -34,6 +57,11 @@ export const alertsApi = {
 
   resolver: async (id: number, observacion: string): Promise<Alerta> => {
     const response = await api.post<Alerta>(`/alertas/${id}/resolver`, { observacion });
+    return response.data;
+  },
+
+  resolverFormal: async (id: number, data: ResolucionAlertaRequest): Promise<ResolucionAlerta> => {
+    const response = await api.post<ResolucionAlerta>(`/alertas/${id}/resolver-formal`, data);
     return response.data;
   },
 

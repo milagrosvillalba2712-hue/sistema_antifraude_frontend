@@ -14,9 +14,18 @@ import {
   FileText,
   History,
 } from 'lucide-react';
-import { alertsApi, assignmentApi } from '../../api';
+import { alertsApi } from '../../api';
 import { formatDate } from '../../utils';
-import type { Alerta, EstadoAlerta, PrioridadAlerta, HistorialAsignacion, TimelineEvent } from '../../types';
+import type {
+  Alerta,
+  AlertaDetalle,
+  AnalistaDisponible,
+  EstadoAlerta,
+  HistorialAsignacion,
+  PrioridadAlerta,
+  ResolucionAlertaRequest,
+  TimelineEvent,
+} from '../../types';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -53,6 +62,23 @@ const Alerts = () => {
   const [activeTab, setActiveTab] = useState<'info' | 'timeline' | 'acciones'>('info');
   const [history, setHistory] = useState<HistorialAsignacion[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+  const [detail, setDetail] = useState<AlertaDetalle | null>(null);
+  const [analysts, setAnalysts] = useState<AnalistaDisponible[]>([]);
+  const [assignTo, setAssignTo] = useState('');
+  const [showResolution, setShowResolution] = useState(false);
+  const [resolution, setResolution] = useState<ResolucionAlertaRequest>({
+    resultado: 'FALSO_POSITIVO',
+    conclusion: '',
+    decision: '',
+    justificacion: '',
+    evidenciaDescripcion: '',
+    contactoCliente: '',
+    fondosRetenidos: false,
+    movimientoLiberable: true,
+    requiereRos: false,
+    requiereBloqueo: false,
+    requiereEscalamientoLegal: false,
+  });
 
   const fetchAlerts = useCallback(async () => {
     try {
@@ -70,12 +96,16 @@ const Alerts = () => {
 
   const loadAlertDetails = useCallback(async (alertId: number) => {
     try {
-      const [historyData, timelineData] = await Promise.all([
+      const [historyData, timelineData, detailData, analystsData] = await Promise.all([
         alertsApi.getHistory(alertId),
         alertsApi.getTimeline(alertId),
+        alertsApi.getDetail(alertId),
+        alertsApi.getAnalistasDisponibles(),
       ]);
       setHistory(historyData);
       setTimeline(timelineData);
+      setDetail(detailData);
+      setAnalysts(analystsData);
     } catch (err) {
       console.error(err);
     }
@@ -106,33 +136,86 @@ const Alerts = () => {
     currentPage * ITEMS_PER_PAGE
   );
 
-  const handleAsignar = async (id: number) => {
+  const handleAutoAsignarme = async (id: number) => {
     try {
-      await assignmentApi.run(id);
+      await alertsApi.autoasignarme(id);
       fetchAlerts();
       if (selectedAlert?.id === id) {
         const updated = await alertsApi.getById(id);
         setSelectedAlert(updated);
+        loadAlertDetails(id);
       }
     } catch (err) {
       console.error(err);
     }
   };
 
-  const handleResolver = async (id: number) => {
-    const observacion = prompt('Ingrese la observación de resolución:');
-    if (observacion !== null) {
-      try {
-        await alertsApi.resolver(id, observacion);
-        fetchAlerts();
-        if (selectedAlert?.id === id) {
-          const updated = await alertsApi.getById(id);
-          setSelectedAlert(updated);
-        }
-      } catch (err) {
-        console.error(err);
+  const handleAsignarAnalista = async (id: number) => {
+    if (!assignTo) return;
+    await alertsApi.asignar(id, Number(assignTo));
+    await fetchAlerts();
+    const updated = await alertsApi.getById(id);
+    setSelectedAlert(updated);
+    loadAlertDetails(id);
+  };
+
+  const handleResolverFormal = async () => {
+    if (!selectedAlert) return;
+    await alertsApi.resolverFormal(selectedAlert.id, resolution);
+    setShowResolution(false);
+    await fetchAlerts();
+    const updated = await alertsApi.getById(selectedAlert.id);
+    setSelectedAlert(updated);
+    loadAlertDetails(selectedAlert.id);
+  };
+
+  const renderMap = (record?: Record<string, unknown>) => {
+    const entries = Object.entries(record || {}).filter(([, value]) => value !== null && value !== undefined);
+    if (!entries.length) return <p className="text-sm text-secondary/50">Sin datos disponibles</p>;
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {entries.map(([key, value]) => (
+          <div key={key} className="rounded-md bg-surface-container-low p-3">
+            <p className="text-[10px] uppercase font-bold text-secondary/40">{key}</p>
+            <p className="text-sm text-secondary break-words">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</p>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderHistoryRows = (rows: Record<string, unknown>[]) => (
+    <div className="space-y-2">
+      {rows.length === 0 ? (
+        <p className="text-sm text-secondary/50">No hay historial transaccional para este cliente.</p>
+      ) : rows.map((row, index) => (
+        <div key={index} className="grid grid-cols-2 lg:grid-cols-4 gap-2 rounded-md bg-surface-container-low p-3 text-xs">
+          {['codigo', 'monto', 'moneda', 'canal', 'fechaTransaccion', 'scoreRiesgo', 'estadoEvaluacion'].map((key) => (
+            <div key={key}>
+              <p className="font-bold uppercase text-secondary/40">{key}</p>
+              <p className="text-secondary">{String(row[key] ?? '-')}</p>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+
+  const updateResolution = (patch: Partial<ResolucionAlertaRequest>) => {
+    setResolution((current) => {
+      const next = { ...current, ...patch };
+      if (patch.resultado === 'FRAUDE_CONFIRMADO') {
+        next.requiereBloqueo = true;
+        next.fondosRetenidos = true;
+        next.movimientoLiberable = false;
       }
-    }
+      if (patch.resultado === 'ROS_REQUERIDO') next.requiereRos = true;
+      if (patch.resultado === 'FALSO_POSITIVO' || patch.resultado === 'OPERACION_JUSTIFICADA') {
+        next.movimientoLiberable = true;
+        next.fondosRetenidos = false;
+      }
+      return next;
+    });
   };
 
   if (loading) {
@@ -338,17 +421,38 @@ const Alerts = () => {
                   </div>
                   <div className="flex gap-2">
                     {selectedAlert.estado === 'NUEVA' && (
-                      <button
-                        onClick={() => handleAsignar(selectedAlert.id)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-tertiary text-white rounded-lg text-xs font-bold hover:opacity-90"
-                      >
-                        <UserPlus className="w-3 h-3" />
-                        Asignar
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={assignTo}
+                          onChange={(event) => setAssignTo(event.target.value)}
+                          className="rounded-lg bg-surface-container-low px-3 py-1.5 text-xs text-secondary outline-none"
+                        >
+                          <option value="">Analista disponible</option>
+                          {analysts.map((analyst) => (
+                            <option key={analyst.usuarioId} value={analyst.usuarioId}>
+                              {analyst.nombre} - {analyst.estado} - {analyst.alertasActivas} activas
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleAsignarAnalista(selectedAlert.id)}
+                          disabled={!assignTo}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-tertiary text-white rounded-lg text-xs font-bold hover:opacity-90 disabled:opacity-50"
+                        >
+                          <UserPlus className="w-3 h-3" />
+                          Asignar
+                        </button>
+                        <button
+                          onClick={() => handleAutoAsignarme(selectedAlert.id)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-primary-container text-white rounded-lg text-xs font-bold hover:opacity-90"
+                        >
+                          Autoasignarme
+                        </button>
+                      </div>
                     )}
                     {(selectedAlert.estado === 'ASIGNADA' || selectedAlert.estado === 'EN_REVISION') && (
                       <button
-                        onClick={() => handleResolver(selectedAlert.id)}
+                        onClick={() => setShowResolution(true)}
                         className="flex items-center gap-1 px-3 py-1.5 bg-success text-white rounded-lg text-xs font-bold hover:opacity-90"
                       >
                         <CheckCircle className="w-3 h-3" />
@@ -417,21 +521,43 @@ const Alerts = () => {
                     {selectedAlert.transaccionId && (
                       <div>
                         <h3 className="text-xs font-bold text-secondary/60 uppercase mb-3">
-                          Transacción
+                          Transacción Completa
                         </h3>
-                        <p className="text-sm text-secondary">
-                          ID: #{selectedAlert.transaccionId}
-                        </p>
+                        {renderMap(detail?.transaccion)}
                       </div>
                     )}
                     {selectedAlert.reglaId && (
                       <div>
                         <h3 className="text-xs font-bold text-secondary/60 uppercase mb-3">
-                          Regla activada
+                          Regla Y Escenario
                         </h3>
-                        <p className="text-sm text-secondary">
-                          ID: #{selectedAlert.reglaId}
-                        </p>
+                        {renderMap(detail?.regla)}
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="text-xs font-bold text-secondary/60 uppercase mb-3">
+                        Cliente Y KYC
+                      </h3>
+                      {renderMap(detail?.cliente)}
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-secondary/60 uppercase mb-3">
+                        Servicios Externos
+                      </h3>
+                      {renderMap(detail?.serviciosExternos?.[0])}
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-secondary/60 uppercase mb-3">
+                        Historial Transaccional Del Cliente
+                      </h3>
+                      {renderHistoryRows(detail?.historialTransaccional || [])}
+                    </div>
+                    {detail?.resolucion && (
+                      <div>
+                        <h3 className="text-xs font-bold text-secondary/60 uppercase mb-3">
+                          Resolución Formal
+                        </h3>
+                        {renderMap(detail.resolucion as unknown as Record<string, unknown>)}
                       </div>
                     )}
                   </div>
@@ -530,6 +656,70 @@ const Alerts = () => {
           )}
         </div>
       </div>
+      {showResolution && selectedAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-surface-container-highest px-6 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-secondary">Resolución Formal</h2>
+                <p className="text-xs text-secondary/50">Documenta evidencia, conclusión y decisión para la alerta #{selectedAlert.id}.</p>
+              </div>
+              <button onClick={() => setShowResolution(false)} className="rounded-md p-2 text-secondary hover:bg-surface-container-low">×</button>
+            </div>
+            <div className="grid gap-4 p-6 md:grid-cols-2">
+              <label className="text-sm font-medium text-secondary">
+                Resultado
+                <select value={resolution.resultado} onChange={(event) => updateResolution({ resultado: event.target.value as ResolucionAlertaRequest['resultado'] })} className="mt-1 w-full rounded-md bg-surface-container-low px-3 py-2 text-sm outline-none">
+                  <option value="FRAUDE_CONFIRMADO">Fraude Confirmado</option>
+                  <option value="FALSO_POSITIVO">Falso Positivo</option>
+                  <option value="OPERACION_JUSTIFICADA">Operación Justificada</option>
+                  <option value="ESCALAR">Escalar</option>
+                  <option value="ROS_REQUERIDO">ROS Requerido</option>
+                </select>
+                <span className="mt-1 block text-xs font-normal text-secondary/50">Define el resultado final de la investigación.</span>
+              </label>
+              {[
+                ['conclusion', 'Conclusión', 'Resumen final del análisis realizado.'],
+                ['decision', 'Decisión', 'Acción operativa que se tomará sobre la alerta.'],
+                ['justificacion', 'Justificación', 'Motivo por el cual se toma esta decisión.'],
+                ['evidenciaDescripcion', 'Evidencia', 'Documentos, capturas o referencias recopiladas.'],
+                ['contactoCliente', 'Contacto Con Cliente', 'Resultado de validaciones o comunicación con el cliente.'],
+              ].map(([key, label, help]) => (
+                <label key={key} className="text-sm font-medium text-secondary md:col-span-2">
+                  {label}
+                  <textarea
+                    value={String(resolution[key as keyof ResolucionAlertaRequest] ?? '')}
+                    onChange={(event) => updateResolution({ [key]: event.target.value } as Partial<ResolucionAlertaRequest>)}
+                    className="mt-1 min-h-20 w-full rounded-md bg-surface-container-low px-3 py-2 text-sm outline-none"
+                    placeholder={help}
+                  />
+                  <span className="mt-1 block text-xs font-normal text-secondary/50">{help}</span>
+                </label>
+              ))}
+              {[
+                ['fondosRetenidos', 'Fondos Retenidos'],
+                ['movimientoLiberable', 'Movimiento Liberable'],
+                ['requiereRos', 'Requiere ROS'],
+                ['requiereBloqueo', 'Requiere Bloqueo'],
+                ['requiereEscalamientoLegal', 'Requiere Escalamiento Legal'],
+              ].map(([key, label]) => (
+                <label key={key} className="flex items-center gap-2 rounded-md bg-surface-container-low p-3 text-sm font-medium text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(resolution[key as keyof ResolucionAlertaRequest])}
+                    onChange={(event) => updateResolution({ [key]: event.target.checked } as Partial<ResolucionAlertaRequest>)}
+                  />
+                  {label}
+                </label>
+              ))}
+              <div className="flex justify-end gap-2 md:col-span-2">
+                <button onClick={() => setShowResolution(false)} className="rounded-md border border-surface-container-highest px-4 py-2 text-sm font-semibold text-secondary">Cancelar</button>
+                <button onClick={handleResolverFormal} className="rounded-md bg-success px-4 py-2 text-sm font-bold text-white">Guardar Resolución</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

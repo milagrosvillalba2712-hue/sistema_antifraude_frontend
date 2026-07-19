@@ -24,6 +24,7 @@ import type {
   EntitySummary,
   EstadoRegla,
   ReglaRiesgo,
+  RuleFactDefinition,
   SeveridadRegla,
   SimuladorResponse,
 } from '../../types';
@@ -62,17 +63,26 @@ const tabs: Array<{ id: Tab; label: string; icon: typeof ListChecks }> = [
   { id: 'simulador', label: 'Simulador', icon: FlaskConical },
 ];
 
-const facts = ['monto', 'moneda', 'canal', 'paisOrigen', 'paisDestino', 'documento', 'pep', 'observado', 'listas', 'horario', 'frecuencia'];
-const operadores: Array<{ value: CondicionRegla['operador']; label: string }> = [
-  { value: '==', label: 'Es igual a' },
-  { value: '!=', label: 'Es diferente de' },
-  { value: '>', label: 'Es mayor que' },
-  { value: '>=', label: 'Es mayor o igual que' },
-  { value: '<', label: 'Es menor que' },
-  { value: '<=', label: 'Es menor o igual que' },
-  { value: 'in', label: 'Esta dentro de una lista' },
-  { value: 'between', label: 'Esta entre dos valores' },
-  { value: 'exists', label: 'Existe o esta informado' },
+const operatorLabels: Record<CondicionRegla['operador'], string> = {
+  '==': 'Es igual a',
+  '!=': 'Es diferente de',
+  '>': 'Es mayor que',
+  '>=': 'Es mayor o igual que',
+  '<': 'Es menor que',
+  '<=': 'Es menor o igual que',
+  in: 'Esta dentro de una lista',
+  between: 'Esta entre dos valores',
+  exists: 'Existe o esta informado',
+};
+const fallbackFacts: RuleFactDefinition[] = [
+  { fact: 'monto', etiqueta: 'Monto de la transaccion', tipo: 'NUMERICO', catalogo: null, operadores: ['>', '>=', '<', '<=', 'between'] },
+  { fact: 'moneda', etiqueta: 'Moneda', tipo: 'CATALOGO', catalogo: 'moneda', operadores: ['==', '!=', 'in'] },
+  { fact: 'canal', etiqueta: 'Canal utilizado', tipo: 'CATALOGO', catalogo: 'canal', operadores: ['==', '!=', 'in'] },
+  { fact: 'paisOrigen', etiqueta: 'Pais de origen', tipo: 'CATALOGO', catalogo: 'pais', operadores: ['==', '!=', 'in'] },
+  { fact: 'paisDestino', etiqueta: 'Pais de destino', tipo: 'CATALOGO', catalogo: 'pais', operadores: ['==', '!=', 'in'] },
+  { fact: 'pep', etiqueta: 'Cliente PEP', tipo: 'BOOLEANO', catalogo: null, operadores: ['exists', '=='] },
+  { fact: 'observado', etiqueta: 'Cliente observado', tipo: 'BOOLEANO', catalogo: null, operadores: ['exists', '=='] },
+  { fact: 'listas', etiqueta: 'Listas regulatorias', tipo: 'EXISTENCIA', catalogo: null, operadores: ['exists', '=='] },
 ];
 const hiddenOnCreate = new Set(['id', 'fechaCreacion', 'fechaModificacion', 'createdAt', 'updatedAt']);
 const pageSizeOptions = [5, 10, 20, 50];
@@ -147,6 +157,8 @@ const RuleEngine = () => {
   const [formMode, setFormMode] = useState<FormMode | null>(null);
   const [formData, setFormData] = useState<EntityRecord>({});
   const [relationOptions, setRelationOptions] = useState<RelationOptions>({});
+  const [factDefinitions, setFactDefinitions] = useState<RuleFactDefinition[]>(fallbackFacts);
+  const [factValueOptions, setFactValueOptions] = useState<RelationOptions>({});
   const [ruleDrawerMode, setRuleDrawerMode] = useState<RuleFormMode | null>(null);
   const [selectedRule, setSelectedRule] = useState<ReglaRiesgo | null>(null);
   const [ruleDraft, setRuleDraft] = useState<RuleDraft | null>(null);
@@ -211,11 +223,15 @@ const RuleEngine = () => {
   const paginatedRules = useMemo(() => paginate(filteredRules, rulePage, rulePageSize), [filteredRules, rulePage, rulePageSize]);
 
   const preview = useMemo(() => {
-    const readable = condiciones.map((c) => `${c.fact} ${c.operador} ${formatValue(c.valor)}`).join(' y ');
+    const readable = condiciones.map((c) => {
+      const fact = factDefinitions.find((definition) => definition.fact === c.fact);
+      return `${fact?.etiqueta || titleize(c.fact)} ${operatorLabels[c.operador]} ${formatValue(c.valor)}`;
+    }).join(' y ');
     return `Si ${readable}, sumar ${ruleForm.score} puntos y sugerir ${ruleForm.accion}.`;
-  }, [condiciones, ruleForm.score, ruleForm.accion]);
+  }, [condiciones, factDefinitions, ruleForm.score, ruleForm.accion]);
 
   const selectedSummary = entities.find((entity) => entity.key === selectedEntity || entity.table === selectedEntity);
+  const factOptions = factDefinitions.map((fact) => [fact.fact, fact.etiqueta] as SelectOption);
   const rowFilterFields = useMemo(() => {
     const names = new Set<string>();
     rows.slice(0, 50).forEach((row) => Object.keys(row).forEach((key) => names.add(key)));
@@ -225,10 +241,16 @@ const RuleEngine = () => {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [ruleData, entityData] = await Promise.all([rulesApi.getAll(), ruleEngineApi.getEntities()]);
+      const [ruleData, entityData, factData] = await Promise.all([
+        rulesApi.getAll(),
+        ruleEngineApi.getEntities(),
+        ruleEngineApi.getFacts().catch(() => fallbackFacts),
+      ]);
       setRules(ruleData);
       setEntities(entityData);
+      setFactDefinitions(factData.length ? factData : fallbackFacts);
       await loadOptionsFor(['escenario', 'accion']);
+      await loadFactValueOptions(factData.length ? factData : fallbackFacts);
       if (!entityData.some((item) => item.key === selectedEntity || item.table === selectedEntity) && entityData[0]) {
         setSelectedEntity(entityData[0].key);
       }
@@ -265,6 +287,20 @@ const RuleEngine = () => {
       ...current,
       ...Object.fromEntries(loadedEntries),
     }));
+  };
+
+  const loadFactValueOptions = async (definitions: RuleFactDefinition[]) => {
+    const catalogs = Array.from(new Set(definitions.map((fact) => fact.catalogo).filter(Boolean))) as string[];
+    const entries = await Promise.all(catalogs.map(async (catalog) => {
+      try {
+        const items = await ruleEngineApi.getEntityRows(catalog);
+        return [catalog, items.map((item) => [catalogValue(item), optionLabel(item)] as SelectOption)] as const;
+      } catch (error) {
+        console.warn(`No se pudieron cargar valores para ${catalog}`, error);
+        return [catalog, []] as const;
+      }
+    }));
+    setFactValueOptions(Object.fromEntries(entries));
   };
 
   useEffect(() => {
@@ -464,6 +500,9 @@ const RuleEngine = () => {
           saveRule={saveRule}
           escenarioOptions={relationOptions.escenario || []}
           accionOptions={relationOptions.accion || []}
+          factOptions={factOptions}
+          factDefinitions={factDefinitions}
+          factValueOptions={factValueOptions}
         />
       )}
       {activeTab === 'entidades' && (
@@ -574,6 +613,9 @@ const RuleEngine = () => {
           setCondiciones={setRuleDraftConditions}
           escenarioOptions={relationOptions.escenario || []}
           accionOptions={relationOptions.accion || []}
+          factOptions={factOptions}
+          factDefinitions={factDefinitions}
+          factValueOptions={factValueOptions}
           close={() => {
             setRuleDrawerMode(null);
             setSelectedRule(null);
@@ -691,7 +733,7 @@ const RulesPanel = ({
   </section>
 );
 
-const ConstructorPanel = ({ ruleForm, setRuleForm, condiciones, setCondiciones, preview, saving, saveRule, escenarioOptions, accionOptions }: {
+const ConstructorPanel = ({ ruleForm, setRuleForm, condiciones, setCondiciones, preview, saving, saveRule, escenarioOptions, accionOptions, factOptions, factDefinitions, factValueOptions }: {
   ruleForm: RuleDraft;
   setRuleForm: (value: RuleDraft) => void;
   condiciones: CondicionRegla[];
@@ -701,6 +743,9 @@ const ConstructorPanel = ({ ruleForm, setRuleForm, condiciones, setCondiciones, 
   saveRule: () => void;
   escenarioOptions: SelectOption[];
   accionOptions: SelectOption[];
+  factOptions: SelectOption[];
+  factDefinitions: RuleFactDefinition[];
+  factValueOptions: RelationOptions;
 }) => (
   <section className="grid gap-5 xl:grid-cols-[1fr_380px]">
     <div className="space-y-4 rounded-lg border border-surface-container-highest bg-white p-5">
@@ -724,10 +769,14 @@ const ConstructorPanel = ({ ruleForm, setRuleForm, condiciones, setCondiciones, 
       </label>
       <div className="space-y-3">
         {condiciones.map((condition, index) => (
-          <div key={index} className="grid gap-2 rounded-md border border-surface-container-highest p-3 md:grid-cols-[1fr_120px_1fr_44px]">
-            <Select label="Dato" value={condition.fact} onChange={(v) => setCondiciones(updateCondition(condiciones, index, { fact: v }))} options={facts.map((v) => [v, titleize(v)])} help="Dato de la transacción o del cliente que evaluará el motor." />
-            <Select label="Operador" value={condition.operador} onChange={(v) => setCondiciones(updateCondition(condiciones, index, { operador: v as CondicionRegla['operador'] }))} options={operadores.map((operator) => [operator.value, operator.label])} help="Comparación aplicada contra el valor." />
-            <Field label="Valor" value={String(condition.valor)} onChange={(v) => setCondiciones(updateCondition(condiciones, index, { valor: parseValue(v) }))} placeholder="Ej. 10000, USD o true" help="Usa comas para listas o rangos cuando aplique." />
+          <div key={index} className="grid gap-2 rounded-md border border-surface-container-highest p-3 md:grid-cols-[1fr_180px_1fr_44px]">
+            <ConditionFields
+              condition={condition}
+              factOptions={factOptions}
+              factDefinitions={factDefinitions}
+              factValueOptions={factValueOptions}
+              onChange={(patch) => setCondiciones(updateConditionSmart(condiciones, index, patch, factDefinitions))}
+            />
             <button onClick={() => setCondiciones(condiciones.filter((_, current) => current !== index))} className="mt-6 rounded-md p-2 text-critical hover:bg-critical/10" title="Quitar">
               <X className="h-4 w-4" />
             </button>
@@ -755,7 +804,7 @@ const ConstructorPanel = ({ ruleForm, setRuleForm, condiciones, setCondiciones, 
   </section>
 );
 
-const RuleDrawer = ({ mode, rule, draft, setDraft, condiciones, setCondiciones, escenarioOptions, accionOptions, close, save, saving }: {
+const RuleDrawer = ({ mode, rule, draft, setDraft, condiciones, setCondiciones, escenarioOptions, accionOptions, factOptions, factDefinitions, factValueOptions, close, save, saving }: {
   mode: RuleFormMode;
   rule: ReglaRiesgo;
   draft: RuleDraft;
@@ -764,6 +813,9 @@ const RuleDrawer = ({ mode, rule, draft, setDraft, condiciones, setCondiciones, 
   setCondiciones: (value: CondicionRegla[]) => void;
   escenarioOptions: SelectOption[];
   accionOptions: SelectOption[];
+  factOptions: SelectOption[];
+  factDefinitions: RuleFactDefinition[];
+  factValueOptions: RelationOptions;
   close: () => void;
   save: () => void;
   saving: boolean;
@@ -825,9 +877,13 @@ const RuleDrawer = ({ mode, rule, draft, setDraft, condiciones, setCondiciones, 
                 <h3 className="text-sm font-semibold text-secondary">Condiciones</h3>
                 {condiciones.map((condition, index) => (
                   <div key={index} className="grid gap-2 rounded-md border border-surface-container-highest p-3 md:grid-cols-[1fr_180px_1fr_44px]">
-                    <Select label="Dato" value={condition.fact} onChange={(value) => setCondiciones(updateCondition(condiciones, index, { fact: value }))} options={facts.map((value) => [value, titleize(value)])} help="Dato usado por el motor." />
-                    <Select label="Operador" value={condition.operador} onChange={(value) => setCondiciones(updateCondition(condiciones, index, { operador: value as CondicionRegla['operador'] }))} options={operadores.map((operator) => [operator.value, operator.label])} help="Comparación en lenguaje común." />
-                    <Field label="Valor" value={String(condition.valor)} onChange={(value) => setCondiciones(updateCondition(condiciones, index, { valor: parseValue(value) }))} placeholder="Ej. 10000, USD o true" help="Valor esperado para cumplir la condición." />
+                    <ConditionFields
+                      condition={condition}
+                      factOptions={factOptions}
+                      factDefinitions={factDefinitions}
+                      factValueOptions={factValueOptions}
+                      onChange={(patch) => setCondiciones(updateConditionSmart(condiciones, index, patch, factDefinitions))}
+                    />
                     <button onClick={() => setCondiciones(condiciones.filter((_, current) => current !== index))} className="mt-6 rounded-md p-2 text-critical hover:bg-critical/10" title="Quitar condición">
                       <X className="h-4 w-4" />
                     </button>
@@ -847,6 +903,63 @@ const RuleDrawer = ({ mode, rule, draft, setDraft, condiciones, setCondiciones, 
         </div>
       </div>
     </div>
+  );
+};
+
+const ConditionFields = ({ condition, factOptions, factDefinitions, factValueOptions, onChange }: {
+  condition: CondicionRegla;
+  factOptions: SelectOption[];
+  factDefinitions: RuleFactDefinition[];
+  factValueOptions: RelationOptions;
+  onChange: (patch: Partial<CondicionRegla>) => void;
+}) => {
+  const definition = factDefinitions.find((fact) => fact.fact === condition.fact) || fallbackFacts[0];
+  const operatorOptions = definition.operadores.map((operator) => [operator, operatorLabels[operator]] as SelectOption);
+  const valueOptions = definition.catalogo ? factValueOptions[definition.catalogo] || [] : [];
+
+  return (
+    <>
+      <Select
+        label="Dato"
+        value={condition.fact}
+        onChange={(value) => onChange({ fact: value })}
+        options={factOptions}
+        help="Dato de la transaccion o del cliente que evaluara el motor."
+      />
+      <Select
+        label="Operador"
+        value={condition.operador}
+        onChange={(value) => onChange({ operador: value as CondicionRegla['operador'] })}
+        options={operatorOptions}
+        help={`Operadores permitidos para ${definition.etiqueta.toLowerCase()}.`}
+      />
+      {definition.tipo === 'CATALOGO' && valueOptions.length ? (
+        <Select
+          label="Valor"
+          value={String(condition.valor ?? '')}
+          onChange={(value) => onChange({ valor: condition.operador === 'in' ? parseValue(value) : value })}
+          options={[['', 'Selecciona un valor'], ...valueOptions]}
+          help="Valor cargado desde el catalogo correspondiente."
+        />
+      ) : definition.tipo === 'BOOLEANO' || definition.tipo === 'EXISTENCIA' ? (
+        <Select
+          label="Valor"
+          value={String(condition.valor ?? true)}
+          onChange={(value) => onChange({ valor: value === 'true' })}
+          options={[['true', 'Si'], ['false', 'No']]}
+          help="Indica si la condicion debe cumplirse o no."
+        />
+      ) : (
+        <Field
+          label="Valor"
+          type="number"
+          value={Array.isArray(condition.valor) ? condition.valor.join(',') : String(condition.valor ?? '')}
+          onChange={(value) => onChange({ valor: parseValue(value) })}
+          placeholder={condition.operador === 'between' ? 'Ej. 10000,20000' : 'Ej. 10000'}
+          help="Para rangos usa dos numeros separados por coma."
+        />
+      )}
+    </>
   );
 };
 
@@ -1099,6 +1212,37 @@ const PaginationControls = ({ total, page, pageSize, onPageChange, onPageSizeCha
 const updateCondition = (conditions: CondicionRegla[], index: number, patch: Partial<CondicionRegla>) =>
   conditions.map((condition, currentIndex) => currentIndex === index ? { ...condition, ...patch } : condition);
 
+const updateConditionSmart = (
+  conditions: CondicionRegla[],
+  index: number,
+  patch: Partial<CondicionRegla>,
+  definitions: RuleFactDefinition[]
+) => {
+  const current = conditions[index];
+  if (patch.fact && patch.fact !== current.fact) {
+    const definition = definitions.find((fact) => fact.fact === patch.fact) || fallbackFacts[0];
+    return updateCondition(conditions, index, {
+      fact: patch.fact,
+      operador: definition.operadores[0],
+      valor: defaultValueForFact(definition),
+    });
+  }
+  if (patch.operador && patch.operador !== current.operador) {
+    const definition = definitions.find((fact) => fact.fact === current.fact) || fallbackFacts[0];
+    return updateCondition(conditions, index, {
+      operador: patch.operador,
+      valor: patch.operador === 'between' ? [0, 0] : defaultValueForFact(definition),
+    });
+  }
+  return updateCondition(conditions, index, patch);
+};
+
+const defaultValueForFact = (definition: RuleFactDefinition): CondicionRegla['valor'] => {
+  if (definition.tipo === 'NUMERICO') return 0;
+  if (definition.tipo === 'BOOLEANO' || definition.tipo === 'EXISTENCIA') return true;
+  return '';
+};
+
 const parseValue = (value: string): string | number | boolean | Array<string | number> => {
   if (value.includes(',')) return value.split(',').map((part) => {
     const parsed = parseValue(part.trim());
@@ -1204,6 +1348,8 @@ const optionLabel = (item: EntityRecord) => {
   if (codigo) return String(codigo);
   return `Registro #${String(item.id ?? '-')}`;
 };
+
+const catalogValue = (item: EntityRecord) => String(item.codigo ?? item.codigoIso ?? item.nombre ?? item.id ?? '');
 
 const toRuleDraft = (rule: ReglaRiesgo): RuleDraft => ({
   escenarioId: rule.escenarioId || 0,

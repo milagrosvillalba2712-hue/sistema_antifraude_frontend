@@ -13,12 +13,12 @@ export const usersApi = {
   },
 
   create: async (data: UsuarioRequest): Promise<Usuario> => {
-    const response = await api.post<Usuario>('/admin/users', data);
+    const response = await api.post<Usuario>('/admin/users', toApiPayload(data));
     return response.data;
   },
 
   update: async (id: number, data: UsuarioRequest): Promise<Usuario> => {
-    const response = await api.put<Usuario>(`/admin/users/${id}`, data);
+    const response = await api.put<Usuario>(`/admin/users/${id}`, toApiPayload(data));
     return response.data;
   },
 
@@ -26,3 +26,13 @@ export const usersApi = {
     await api.delete(`/admin/users/${id}`);
   },
 };
+
+const toApiPayload = (data: UsuarioRequest) => ({
+  nombre: data.nombreCompleto,
+  email: data.email,
+  password: data.password,
+  rol: data.rol,
+  empresaId: data.rol === 'ADMIN_GENERAL' || data.empresaId === '' || data.empresaId == null
+    ? null
+    : Number(data.empresaId),
+});

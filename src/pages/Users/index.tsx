@@ -78,7 +78,8 @@ const Users = () => {
     setEditingUser(user);
     setShowForm(true);
     reset({
-      nombre: user.nombre,
+      username: user.username,
+      nombreCompleto: user.nombreCompleto,
       email: user.email,
       rol: user.rol,
     });
@@ -148,7 +149,7 @@ const Users = () => {
               {users.map((user) => (
                 <tr key={user.id} className="row-hover transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-secondary">
-                    {user.nombre}
+                    {user.nombreCompleto || user.nombre}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary">
                     {user.email}
@@ -220,15 +221,29 @@ const Users = () => {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-secondary mb-1">
-                  Nombre *
+                  Username *
                 </label>
                 <input
-                  {...register('nombre')}
+                  {...register('username')}
                   className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary placeholder-secondary/40 focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
-                  placeholder="Nombre del usuario"
+                  placeholder="Nombre de usuario"
                 />
-                {errors.nombre && (
-                  <p className="mt-1 text-sm text-error">{errors.nombre.message}</p>
+                {errors.username && (
+                  <p className="mt-1 text-sm text-error">{errors.username.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-secondary mb-1">
+                  Nombre Completo *
+                </label>
+                <input
+                  {...register('nombreCompleto')}
+                  className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary placeholder-secondary/40 focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
+                  placeholder="Nombre completo del usuario"
+                />
+                {errors.nombreCompleto && (
+                  <p className="mt-1 text-sm text-error">{errors.nombreCompleto.message}</p>
                 )}
               </div>
 
@@ -271,7 +286,9 @@ const Users = () => {
                   className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
                 >
                   <option value="ANALISTA">Analista</option>
+                  <option value="SUPERVISOR">Supervisor</option>
                   <option value="ADMINISTRADOR">Administrador</option>
+                  <option value="AUDITOR">Auditor</option>
                 </select>
                 {errors.rol && (
                   <p className="mt-1 text-sm text-error">{errors.rol.message}</p>

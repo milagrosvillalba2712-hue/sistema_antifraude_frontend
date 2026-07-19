@@ -17,6 +17,8 @@ const statusLabels: Record<EstadoUsuario, string> = {
   CAPACITACION: 'Capacitación',
   FUERA_OFICINA: 'Fuera de oficina',
   NO_DISPONIBLE: 'No disponible',
+  OCUPADO: 'Ocupado',
+  AUSENTE: 'Ausente',
 };
 
 export default function ProfileCard({ profile, onSave }: ProfileCardProps) {
@@ -63,9 +65,9 @@ export default function ProfileCard({ profile, onSave }: ProfileCardProps) {
               Estado actual
             </label>
             <div className="flex items-center gap-2">
-              <StatusDot status={profile.estado} />
+              <StatusDot status={profile.estado || 'DISPONIBLE'} />
               <span className="text-sm text-secondary">
-                {statusLabels[profile.estado as EstadoUsuario] || profile.estado}
+                {profile.estado ? (statusLabels[profile.estado as EstadoUsuario] || profile.estado) : 'Sin estado'}
               </span>
             </div>
           </div>

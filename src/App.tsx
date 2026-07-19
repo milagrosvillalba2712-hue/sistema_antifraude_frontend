@@ -5,11 +5,12 @@ import { ProtectedRoute } from './routes/ProtectedRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Alerts from './pages/Alerts';
-import Rules from './pages/Rules';
+import RuleEngine from './pages/RuleEngine';
 import KYC from './pages/KYC';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Profile from './pages/Profile';
+import MotorHistorial from './pages/MotorHistorial';
 
 function App() {
   return (
@@ -26,12 +27,19 @@ function App() {
             <Route path="/kyc" element={<KYC />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/motor/historial" element={<MotorHistorial />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'SUPERVISOR']} />}>
+          <Route element={<AuthenticatedLayout />}>
+            <Route path="/rules" element={<Navigate to="/rule-engine" replace />} />
+            <Route path="/rule-engine" element={<RuleEngine />} />
           </Route>
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']} />}>
           <Route element={<AuthenticatedLayout />}>
-            <Route path="/rules" element={<Rules />} />
             <Route path="/users" element={<Users />} />
           </Route>
         </Route>

@@ -1,13 +1,24 @@
-export type Rol = 'ADMINISTRADOR' | 'ANALISTA';
+export type Rol = 'ADMINISTRADOR' | 'SUPERVISOR' | 'ANALISTA' | 'AUDITOR';
 
-export type EstadoAlerta = 'PENDIENTE' | 'ASIGNADA' | 'INVESTIGANDO' | 'RESUELTA' | 'DESCARTADA';
+export type EstadoAlerta = 'NUEVA' | 'ASIGNADA' | 'EN_REVISION' | 'CERRADA';
 
 export type PrioridadAlerta = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA';
 
 export type EstadoUsuario =
-  | 'DISPONIBLE' | 'EN_REUNION' | 'ALMUERZO'
-  | 'VACACIONES' | 'CAPACITACION' | 'FUERA_OFICINA'
-  | 'NO_DISPONIBLE';
+  | 'DISPONIBLE' | 'OCUPADO' | 'AUSENTE' | 'NO_DISPONIBLE'
+  | 'EN_REUNION' | 'ALMUERZO' | 'VACACIONES' | 'CAPACITACION' | 'FUERA_OFICINA';
+
+export type EstadoEvaluacion = 'PENDIENTE' | 'EN_PROCESO' | 'APROBADA' | 'RECHAZADA' | 'REVISION_MANUAL' | 'SOSPECHOSA';
+
+export type NivelRiesgo = 'MUY_BAJO' | 'BAJO' | 'MEDIO' | 'ALTO' | 'CRITICO';
+
+export type EstadoRegla = 'ACTIVA' | 'INACTIVA' | 'EN_PRUEBA' | 'BORRADOR';
+
+export type SeveridadRegla = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA';
+
+export type EstadoCaso = 'NUEVO' | 'ASIGNADO' | 'EN_INVESTIGACION' | 'EN_REVISION' | 'RESUELTO' | 'ROS_GENERADO' | 'CERRADO';
+
+export type ResultadoCaso = 'FALSO_POSITIVO' | 'OPERACION_JUSTIFICADA' | 'RIESGO_CONFIRMADO' | 'ROS_GENERADO' | 'ESCALADO';
 
 export interface LoginRequest {
   email: string;
@@ -23,29 +34,176 @@ export interface LoginResponse {
 
 export interface Usuario {
   id: number;
-  nombre: string;
+  username: string;
+  nombreCompleto: string;
   email: string;
   rol: Rol;
   activo: boolean;
   intentosFallidos: number;
+  bloqueadoHasta: string | null;
   fechaCreacion: string;
+  nombre?: string;
 }
 
 export interface UsuarioRequest {
-  nombre: string;
+  username: string;
+  nombreCompleto: string;
   email: string;
   password?: string;
   rol: Rol;
 }
 
+export interface Pais {
+  id: number;
+  codigoIso: string;
+  nombre: string;
+  continente: string | null;
+  activo: boolean;
+}
+
+export interface Moneda {
+  id: number;
+  codigoIso: string;
+  nombre: string;
+  activo: boolean;
+}
+
+export interface Producto {
+  id: number;
+  codigo: string;
+  nombre: string;
+  activo: boolean;
+}
+
+export interface Canal {
+  id: number;
+  codigo: string;
+  nombre: string;
+  activo: boolean;
+}
+
+export interface TipoDocumento {
+  id: number;
+  codigo: string;
+  nombre: string;
+  activo: boolean;
+}
+
+export interface NivelRiesgoEntity {
+  id: number;
+  codigo: string;
+  nombre: string;
+  orden: number;
+  activo: boolean;
+}
+
+export interface Escenario {
+  id: number;
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+}
+
+export interface ParametroRegla {
+  id: number;
+  reglaId: number;
+  clave: string;
+  valor: string;
+  tipoDato: 'NUMERICO' | 'TEXTO' | 'FECHA' | 'BOOLEANO';
+}
+
+export interface Accion {
+  id: number;
+  codigo: string;
+  descripcion: string | null;
+}
+
+export interface CatalogoItem {
+  id: number;
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+  activo: boolean;
+}
+
+export interface EntitySummary {
+  key: string;
+  table: string;
+  count: number;
+  editable: boolean;
+}
+
+export interface EntityFieldSchema {
+  name: string;
+  type: string;
+  relationType: string | null;
+  relation: boolean;
+  editable: boolean;
+}
+
+export interface EntitySchema {
+  key: string;
+  table: string;
+  editable: boolean;
+  fields: EntityFieldSchema[];
+}
+
+export type EntityRecord = Record<string, unknown>;
+
+export interface CondicionRegla {
+  fact: string;
+  operador: '==' | '!=' | '>' | '>=' | '<' | '<=' | 'in' | 'between' | 'exists';
+  valor: string | number | boolean | Array<string | number>;
+}
+
+export interface ReglaRiesgo {
+  id: number;
+  escenarioId: number;
+  escenarioNombre?: string;
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+  severidad: SeveridadRegla;
+  prioridad: number;
+  score: number;
+  version: number;
+  estado: EstadoRegla;
+  parametros?: ParametroRegla[];
+  acciones?: Accion[];
+  condicion?: string;
+  condicionesJson?: string | null;
+  accionesJson?: string | null;
+  fechaCreacion: string;
+  fechaModificacion: string | null;
+}
+
+export interface ReglaRiesgoRequest {
+  escenarioId: number;
+  codigo: string;
+  nombre: string;
+  descripcion?: string;
+  severidad: SeveridadRegla;
+  prioridad: number;
+  score: number;
+  estado?: EstadoRegla;
+  condiciones?: { combinador: 'ALL' | 'ANY'; items: CondicionRegla[] };
+  acciones?: Array<{ codigo: string; descripcion: string }>;
+  parametros?: { clave: string; valor: string; tipoDato: string }[];
+  accionIds?: number[];
+}
+
 export interface Alerta {
   id: number;
-  transaccionId: number | null;
-  reglaId: number | null;
+  codigo: string;
+  transaccionId: number;
+  reglaId: number;
+  reglaNombre?: string;
   prioridad: PrioridadAlerta;
+  score: number;
   estado: EstadoAlerta;
   observacion: string | null;
   asignadoA: number | null;
+  asignadoNombre?: string;
   fechaGeneracion: string;
   fechaResolucion: string | null;
 }
@@ -57,26 +215,63 @@ export interface AlertaRequest {
   observacion?: string;
 }
 
-export interface ReglaRiesgo {
+export interface Transaccion {
   id: number;
-  nombre: string;
-  descripcion: string | null;
-  tipoRegla: string | null;
-  severidad: string | null;
-  condicion: string;
-  activa: boolean;
-  creadaPor: number | null;
+  codigo: string;
+  transactionUuid: string;
+  personaRemitenteId: number;
+  personaRemitenteNombre?: string;
+  personaBeneficiarioId: number | null;
+  personaBeneficiarioNombre?: string;
+  productoId: number;
+  productoNombre?: string;
+  canalId: number;
+  canalNombre?: string;
+  monedaId: number;
+  monedaCodigo?: string;
+  monto: number;
+  paisOrigenId: number;
+  paisOrigenNombre?: string;
+  paisDestinoId: number;
+  paisDestinoNombre?: string;
+  fechaHoraOperacion: string;
+  scoreTotal: number | null;
+  nivelRiesgoId: number | null;
+  nivelRiesgoNombre?: string;
+  estadoEvaluacion: EstadoEvaluacion;
   fechaCreacion: string;
-  fechaModificacion: string | null;
 }
 
-export interface ReglaRiesgoRequest {
-  nombre: string;
-  descripcion?: string;
-  tipoRegla?: string;
-  severidad?: string;
-  condicion: string;
-  activa?: boolean;
+export interface EjecucionRegla {
+  id: number;
+  transaccionId: number;
+  transaccionCodigo?: string;
+  reglaId: number;
+  reglaCodigo: string;
+  reglaNombre: string;
+  versionReglaEvaluada: number;
+  resultadoBooleano: boolean;
+  scoreAportado: number;
+  accionesGeneradas: string | null;
+  tiempoEjecucionMs: number | null;
+  fechaHoraEjecucion: string;
+}
+
+export interface Caso {
+  id: number;
+  codigo: string;
+  titulo: string;
+  descripcion: string | null;
+  estado: EstadoCaso;
+  prioridad: PrioridadAlerta;
+  score: number | null;
+  usuarioAnalistaId: number | null;
+  usuarioAnalistaNombre?: string;
+  fechaApertura: string;
+  fechaCierre: string | null;
+  resultado: ResultadoCaso | null;
+  observaciones: string | null;
+  cantidadAlertas?: number;
 }
 
 export interface DashboardResponse {
@@ -87,6 +282,7 @@ export interface DashboardResponse {
   promedioScoreRiesgo: number;
   transaccionesPorEstado: Record<string, number>;
   alertasPorPrioridad: Record<string, number>;
+  casosPorEstado?: Record<string, number>;
 }
 
 export interface KycResponse {
@@ -105,44 +301,64 @@ export interface ErrorResponse {
   fieldErrors?: Record<string, string>;
 }
 
-export interface Transaccion {
-  id: number;
-  transactionUuid: string;
-  identificadorDocumento: string | null;
-  cuentaOrigen: string;
-  cuentaDestino: string;
+export interface SimuladorRequest {
+  productoCodigo: string;
+  canalCodigo: string;
+  monedaCodigo: string;
   monto: number;
-  moneda: string;
-  canal: string;
-  tipoTransaccion: string;
-  ipOrigen: string | null;
-  paisOrigen: string | null;
-  fechaTransaccion: string;
+  paisOrigenCodigo: string;
+  paisDestinoCodigo: string;
+  documentoCliente: string;
+  fechaHora: string;
+}
+
+export interface SimuladorReglaResultado {
+  codigo: string;
+  nombre: string;
+  cumplida: boolean;
+  score: number;
+  severidad: string;
+}
+
+export interface SimuladorResponse {
+  scoreTotal: number;
+  nivelRiesgo: string;
+  requiereAccionInmediata: boolean;
+  observaciones: string | null;
   estado: string;
-  scoreRiesgo: number | null;
-  procesada: boolean;
-  fechaProcesamiento: string | null;
+  estadoEvaluacion: string;
+  reglasEjecutadas: SimuladorReglaResultado[];
+  accionesSugeridas: string[];
 }
 
 export interface PerfilUsuario {
   id: number;
   usuarioId: number;
-  nombreVisible: string | null;
-  imagenPerfil: string | null;
-  estado: EstadoUsuario;
-  estadoPersonalizado: string | null;
-  ultimaActualizacionEstado: string | null;
+  fotoUrl: string | null;
+  telefono: string | null;
+  biografia: string | null;
+  zonaHoraria: string;
+  nombreVisible?: string | null;
+  imagenPerfil?: string | null;
+  estado?: EstadoUsuario;
+  estadoPersonalizado?: string | null;
+  ultimaActualizacionEstado?: string | null;
 }
 
 export interface Disponibilidad {
   id: number;
   usuarioId: number;
-  tipoEstado: string;
-  fechaInicio: string;
-  fechaFin: string | null;
-  esProgramado: boolean;
-  motivo: string | null;
-  activo: boolean;
+  estado: EstadoUsuario;
+  emoji: string | null;
+  mensajePersonalizado: string | null;
+  disponibleHasta: string | null;
+  fechaActualizacion: string;
+  tipoEstado?: string;
+  fechaInicio?: string;
+  fechaFin?: string | null;
+  esProgramado?: boolean;
+  motivo?: string | null;
+  activo?: boolean;
 }
 
 export interface HistorialAsignacion {
@@ -177,4 +393,15 @@ export interface AlertFilters {
   search: string;
   estado: EstadoAlerta | '';
   prioridad: PrioridadAlerta | '';
+}
+
+export interface ReglaHistorialVersion {
+  id: number;
+  reglaId: number;
+  version: number;
+  snapshotJson: string;
+  motivoCambio: string;
+  usuarioId: number;
+  usuarioNombre?: string;
+  fechaHora: string;
 }

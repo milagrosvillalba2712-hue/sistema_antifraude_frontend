@@ -1,5 +1,5 @@
 import api from './axios';
-import type { ReglaRiesgo, ReglaRiesgoRequest } from '../types';
+import type { ReglaRiesgo, ReglaRiesgoRequest, ReglaHistorialVersion } from '../types';
 
 export const rulesApi = {
   getAll: async (): Promise<ReglaRiesgo[]> => {
@@ -9,6 +9,16 @@ export const rulesApi = {
 
   getById: async (id: number): Promise<ReglaRiesgo> => {
     const response = await api.get<ReglaRiesgo>(`/reglas/${id}`);
+    return response.data;
+  },
+
+  getByEscenario: async (escenarioId: number): Promise<ReglaRiesgo[]> => {
+    const response = await api.get<ReglaRiesgo[]>(`/reglas/escenario/${escenarioId}`);
+    return response.data;
+  },
+
+  getByEstado: async (estado: string): Promise<ReglaRiesgo[]> => {
+    const response = await api.get<ReglaRiesgo[]>(`/reglas/estado/${estado}`);
     return response.data;
   },
 
@@ -22,7 +32,21 @@ export const rulesApi = {
     return response.data;
   },
 
-  toggle: async (id: number): Promise<void> => {
-    await api.post(`/reglas/${id}/toggle`);
+  activar: async (id: number): Promise<void> => {
+    await api.post(`/reglas/${id}/activar`);
+  },
+
+  desactivar: async (id: number): Promise<void> => {
+    await api.post(`/reglas/${id}/desactivar`);
+  },
+
+  crearNuevaVersion: async (id: number): Promise<ReglaRiesgo> => {
+    const response = await api.post<ReglaRiesgo>(`/reglas/${id}/version`);
+    return response.data;
+  },
+
+  getHistorial: async (id: number): Promise<ReglaHistorialVersion[]> => {
+    const response = await api.get<ReglaHistorialVersion[]>(`/reglas/${id}/historial`);
+    return response.data;
   },
 };

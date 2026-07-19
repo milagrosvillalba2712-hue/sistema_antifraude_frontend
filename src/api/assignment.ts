@@ -7,11 +7,6 @@ export const assignmentApi = {
     return data;
   },
 
-  autoAssign: async (): Promise<{ message: string }> => {
-    const { data } = await api.post('/assignment/auto-assign');
-    return data;
-  },
-
   rebalance: async (usuarioId?: number): Promise<{ message: string }> => {
     const { data } = await api.post('/assignment/rebalance', { usuarioId });
     return data;

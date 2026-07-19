@@ -10,7 +10,6 @@ import {
   Eye,
   CheckCircle,
   UserPlus,
-  Users,
   Clock,
   FileText,
   History,
@@ -22,11 +21,10 @@ import type { Alerta, EstadoAlerta, PrioridadAlerta, HistorialAsignacion, Timeli
 const ITEMS_PER_PAGE = 10;
 
 const estadoColors: Record<EstadoAlerta, string> = {
-  PENDIENTE: 'bg-warning/10 text-warning',
+  NUEVA: 'bg-warning/10 text-warning',
   ASIGNADA: 'bg-tertiary/10 text-tertiary',
-  INVESTIGANDO: 'bg-secondary-container text-secondary',
-  RESUELTA: 'bg-success/10 text-success',
-  DESCARTADA: 'bg-surface-container text-secondary/60',
+  EN_REVISION: 'bg-secondary-container text-secondary',
+  CERRADA: 'bg-success/10 text-success',
 };
 
 const prioridadColors: Record<PrioridadAlerta, string> = {
@@ -137,15 +135,6 @@ const Alerts = () => {
     }
   };
 
-  const handleAutoAssign = async () => {
-    try {
-      await assignmentApi.autoAssign();
-      fetchAlerts();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -181,13 +170,6 @@ const Alerts = () => {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={handleAutoAssign}
-            className="flex items-center px-4 py-2 bg-tertiary text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-bold"
-          >
-            <Users className="w-4 h-4 mr-2" />
-            Auto-asignar
-          </button>
-          <button
             onClick={fetchAlerts}
             className="flex items-center px-4 py-2 text-secondary/60 hover:text-secondary transition-colors"
           >
@@ -218,11 +200,10 @@ const Alerts = () => {
               className="w-full px-3 py-2 bg-surface-container-low border-none rounded-md text-sm text-secondary focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
             >
               <option value="">Todos los estados</option>
-              <option value="PENDIENTE">Pendiente</option>
+              <option value="NUEVA">Nueva</option>
               <option value="ASIGNADA">Asignada</option>
-              <option value="INVESTIGANDO">Investigando</option>
-              <option value="RESUELTA">Resuelta</option>
-              <option value="DESCARTADA">Descartada</option>
+              <option value="EN_REVISION">En Revisión</option>
+              <option value="CERRADA">Cerrada</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
@@ -356,7 +337,7 @@ const Alerts = () => {
                     </span>
                   </div>
                   <div className="flex gap-2">
-                    {selectedAlert.estado === 'PENDIENTE' && (
+                    {selectedAlert.estado === 'NUEVA' && (
                       <button
                         onClick={() => handleAsignar(selectedAlert.id)}
                         className="flex items-center gap-1 px-3 py-1.5 bg-tertiary text-white rounded-lg text-xs font-bold hover:opacity-90"
@@ -365,7 +346,7 @@ const Alerts = () => {
                         Asignar
                       </button>
                     )}
-                    {(selectedAlert.estado === 'ASIGNADA' || selectedAlert.estado === 'INVESTIGANDO') && (
+                    {(selectedAlert.estado === 'ASIGNADA' || selectedAlert.estado === 'EN_REVISION') && (
                       <button
                         onClick={() => handleResolver(selectedAlert.id)}
                         className="flex items-center gap-1 px-3 py-1.5 bg-success text-white rounded-lg text-xs font-bold hover:opacity-90"

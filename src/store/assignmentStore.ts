@@ -7,7 +7,6 @@ interface AssignmentState {
   loading: boolean;
   error: string | null;
   fetchWorkload: () => Promise<void>;
-  autoAssign: () => Promise<void>;
   rebalance: (usuarioId?: number) => Promise<void>;
 }
 
@@ -24,15 +23,6 @@ export const useAssignmentStore = create<AssignmentState>((set) => ({
     } catch (err) {
       set({ error: 'Error al cargar carga de trabajo', loading: false });
       console.error(err);
-    }
-  },
-
-  autoAssign: async () => {
-    try {
-      await assignmentApi.autoAssign();
-    } catch (err) {
-      console.error(err);
-      throw err;
     }
   },
 

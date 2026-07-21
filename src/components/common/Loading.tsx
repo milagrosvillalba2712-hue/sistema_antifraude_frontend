@@ -1,5 +1,4 @@
-import { Loader2 } from 'lucide-react';
-import { cn } from '../../utils';
+import { Spin, Space, Typography } from 'antd';
 
 interface LoadingProps {
   className?: string;
@@ -7,17 +6,15 @@ interface LoadingProps {
   text?: string;
 }
 
-const sizeClasses = {
-  sm: 'w-4 h-4',
-  md: 'w-8 h-8',
-  lg: 'w-12 h-12',
-};
+const sizeMap = {
+  sm: 'small',
+  md: 'default',
+  lg: 'large',
+} as const;
 
-export const Loading = ({ className, size = 'md', text }: LoadingProps) => {
-  return (
-    <div className={cn('flex flex-col items-center justify-center', className)}>
-      <Loader2 className={cn('animate-spin text-primary-container', sizeClasses[size])} />
-      {text && <p className="mt-2 text-sm text-secondary/60">{text}</p>}
-    </div>
-  );
-};
+export const Loading = ({ className, size = 'md', text }: LoadingProps) => (
+  <Space className={className} direction="vertical" align="center" style={{ width: '100%', justifyContent: 'center' }}>
+    <Spin size={sizeMap[size]} />
+    {text && <Typography.Text type="secondary">{text}</Typography.Text>}
+  </Space>
+);

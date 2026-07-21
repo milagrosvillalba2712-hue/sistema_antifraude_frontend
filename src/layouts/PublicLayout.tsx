@@ -1,9 +1,8 @@
 import { Outlet } from 'react-router-dom';
+import { Layout } from 'antd';
 
-export const PublicLayout = () => {
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <Outlet />
-    </div>
-  );
-};
+export const PublicLayout = () => (
+  <Layout style={{ minHeight: '100vh', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+    <Outlet />
+  </Layout>
+);

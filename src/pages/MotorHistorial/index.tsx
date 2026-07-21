@@ -1,11 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-  Loader2,
-  History,
-  Filter,
-  CheckCircle,
-  XCircle,
-} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Input, Row, Col, Space, Statistic, Table, Tag, Typography } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { motorApi } from '../../api';
 import { formatDate } from '../../utils';
 import type { EjecucionRegla } from '../../types';
@@ -18,14 +14,13 @@ const MotorHistorial = () => {
   const [filterRegla, setFilterRegla] = useState('');
 
   const fetchHistorial = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const data = await motorApi.getHistorial();
-      setHistorial(data);
+      setHistorial(await motorApi.getHistorial());
     } catch (err) {
-      setError('Error al cargar el historial');
       console.error(err);
+      setError('Error al cargar el historial');
     } finally {
       setLoading(false);
     }
@@ -35,143 +30,48 @@ const MotorHistorial = () => {
     fetchHistorial();
   }, [fetchHistorial]);
 
-  const filteredHistorial = historial.filter((item) => {
-    if (filterTransaccion && !item.transaccionCodigo?.toLowerCase().includes(filterTransaccion.toLowerCase())) {
-      return false;
-    }
-    if (filterRegla && !item.reglaCodigo.toLowerCase().includes(filterRegla.toLowerCase())) {
-      return false;
-    }
-    return true;
-  });
+  const filteredHistorial = useMemo(() => historial.filter((item) => {
+    const matchesTransaction = !filterTransaccion || item.transaccionCodigo?.toLowerCase().includes(filterTransaccion.toLowerCase());
+    const matchesRule = !filterRegla || item.reglaCodigo.toLowerCase().includes(filterRegla.toLowerCase());
+    return matchesTransaction && matchesRule;
+  }), [filterRegla, filterTransaccion, historial]);
+
+  const columns: ColumnsType<EjecucionRegla> = [
+    { title: 'Transacción', render: (_, item) => item.transaccionCodigo || `TX-${item.transaccionId}` },
+    { title: 'Regla', render: (_, item) => <Space direction="vertical" size={0}><Typography.Text strong>{item.reglaCodigo}</Typography.Text><Typography.Text type="secondary">{item.reglaNombre}</Typography.Text></Space> },
+    { title: 'Version', dataIndex: 'versionReglaEvaluada', render: (value) => `v${value}` },
+    { title: 'Resultado', dataIndex: 'resultadoBooleano', render: (value) => value ? <Tag icon={<CheckCircleOutlined />} color="green">Cumplio</Tag> : <Tag icon={<CloseCircleOutlined />} color="default">No Cumplio</Tag> },
+    { title: 'Score', dataIndex: 'scoreAportado', render: (value) => `+${value}` },
+    { title: 'Tiempo', dataIndex: 'tiempoEjecucionMs', render: (value) => `${value || 0} ms` },
+    { title: 'Fecha', dataIndex: 'fechaEjecucion', render: (value) => formatDate(value) },
+  ];
 
   const totalScore = filteredHistorial.reduce((sum, item) => sum + item.scoreAportado, 0);
   const totalTime = filteredHistorial.reduce((sum, item) => sum + (item.tiempoEjecucionMs || 0), 0);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-container" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <History className="w-12 h-12 text-critical mx-auto mb-4" />
-        <p className="text-critical">{error}</p>
-        <button
-          onClick={fetchHistorial}
-          className="mt-4 px-4 py-2 bg-primary-container text-white rounded-lg hover:opacity-90 transition-opacity"
-        >
-          Reintentar
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-gutter">
-      <div>
-        <h1 className="text-secondary font-semibold text-2xl">Historial de Ejecución del Motor</h1>
-        <p className="text-secondary/60 text-sm mt-1">
-          Registro de todas las evaluaciones realizadas por Drools
-        </p>
-      </div>
-
-      {/* Filters */}
-      <section className="bg-white rounded-xl border border-surface-container-highest shadow-sm p-4">
-        <div className="flex items-center gap-4">
-          <Filter className="w-4 h-4 text-secondary/60" />
-          <input
-            type="text"
-            value={filterTransaccion}
-            onChange={(e) => setFilterTransaccion(e.target.value)}
-            placeholder="Filtrar por transacción..."
-            className="px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary text-sm focus:ring-2 focus:ring-primary-container/20 focus:outline-none flex-1"
-          />
-          <input
-            type="text"
-            value={filterRegla}
-            onChange={(e) => setFilterRegla(e.target.value)}
-            placeholder="Filtrar por regla..."
-            className="px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary text-sm focus:ring-2 focus:ring-primary-container/20 focus:outline-none flex-1"
-          />
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space align="end" style={{ width: '100%', justifyContent: 'space-between' }}>
+        <div>
+          <Typography.Title level={2} style={{ marginBottom: 0 }}>Historial de Ejecución del Motor</Typography.Title>
+          <Typography.Text type="secondary">Registro de evaluaciones realizadas por el motor de reglas.</Typography.Text>
         </div>
-      </section>
-
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-surface-container-highest shadow-sm p-4 text-center">
-          <p className="text-sm text-secondary/60 mb-1">Total Reglas</p>
-          <p className="text-2xl font-bold text-secondary">{filteredHistorial.length}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-surface-container-highest shadow-sm p-4 text-center">
-          <p className="text-sm text-secondary/60 mb-1">Score Total</p>
-          <p className="text-2xl font-bold text-secondary">{totalScore}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-surface-container-highest shadow-sm p-4 text-center">
-          <p className="text-sm text-secondary/60 mb-1">Tiempo Total</p>
-          <p className="text-2xl font-bold text-secondary">{totalTime}ms</p>
-        </div>
-      </div>
-
-      {/* Table */}
-      <section className="bg-white rounded-xl border border-surface-container-highest shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-surface-container-low/30 border-b border-surface-container-highest">
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Transacción</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Regla</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Versión</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Resultado</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Score</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Tiempo</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Fecha</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-container-highest">
-              {filteredHistorial.map((item) => (
-                <tr key={item.id} className="row-hover transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-secondary">
-                    {item.transaccionCodigo || `TX-${item.transaccionId}`}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-semibold text-secondary">{item.reglaCodigo}</div>
-                    <div className="text-xs text-secondary/60">{item.reglaNombre}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary">
-                    v{item.versionReglaEvaluada}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {item.resultadoBooleano ? (
-                      <span className="flex items-center gap-1 text-success text-sm">
-                        <CheckCircle className="w-4 h-4" /> Cumplió
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-secondary/40 text-sm">
-                        <XCircle className="w-4 h-4" /> No cumplió
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-secondary">
-                    +{item.scoreAportado}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary">
-                    {item.tiempoEjecucionMs ? `${item.tiempoEjecucionMs}ms` : '-'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary">
-                    {formatDate(item.fechaHoraEjecucion)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+        <Button icon={<ReloadOutlined />} onClick={fetchHistorial}>Actualizar</Button>
+      </Space>
+      {error && <Alert type="error" showIcon message={error} />}
+      <Card>
+        <Space wrap style={{ width: '100%' }}>
+          <Input allowClear placeholder="Filtrar por transacción" value={filterTransaccion} onChange={(event) => setFilterTransaccion(event.target.value)} style={{ maxWidth: 320 }} />
+          <Input allowClear placeholder="Filtrar por regla" value={filterRegla} onChange={(event) => setFilterRegla(event.target.value)} style={{ maxWidth: 320 }} />
+        </Space>
+      </Card>
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={8}><Card><Statistic title="Total Reglas" value={filteredHistorial.length} /></Card></Col>
+        <Col xs={24} md={8}><Card><Statistic title="Score Total" value={totalScore} /></Card></Col>
+        <Col xs={24} md={8}><Card><Statistic title="Tiempo Total" value={totalTime} suffix="ms" /></Card></Col>
+      </Row>
+      <Table rowKey="id" columns={columns} dataSource={filteredHistorial} loading={loading} pagination={{ pageSize: 10, showSizeChanger: true }} />
+    </Space>
   );
 };
 

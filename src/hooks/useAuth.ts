@@ -11,6 +11,7 @@ export const useAuth = () => {
     try {
       const response = await authApi.login(data);
       login(response.token, {
+        usuarioId: response.usuarioId,
         email: response.email,
         rol: response.rol,
         empresaId: response.empresaId,

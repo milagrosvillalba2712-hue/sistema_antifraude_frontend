@@ -1,94 +1,22 @@
-@import "tailwindcss";
-
-@theme {
-  --color-primary: #994700;
-  --color-primary-container: #de7426;
-  --color-on-primary: #ffffff;
-  --color-on-primary-container: #481e00;
-  --color-secondary: #4e616e;
-  --color-secondary-container: #cee2f2;
-  --color-on-secondary: #ffffff;
-  --color-on-secondary-container: #526573;
-  --color-tertiary: #00658d;
-  --color-tertiary-container: #009bd5;
-  --color-surface: #f7f9fc;
-  --color-surface-container: #eceef1;
-  --color-surface-container-low: #f2f4f7;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-high: #e6e8eb;
-  --color-surface-container-highest: #e0e3e6;
-  --color-surface-bright: #f7f9fc;
-  --color-surface-dim: #d8dadd;
-  --color-on-surface: #191c1e;
-  --color-on-surface-variant: #564338;
-  --color-background: #f7f9fc;
-  --color-on-background: #191c1e;
-  --color-success: #2ECC71;
-  --color-warning: #F2994A;
-  --color-critical: #DE7426;
-  --color-error: #ba1a1a;
-  --color-error-container: #ffdad6;
-  --color-outline: #897266;
-  --color-outline-variant: #ddc1b2;
-  --color-text-dark: #1A2A36;
-  --color-inverse-primary: #ffb68a;
-  --color-inverse-surface: #2d3133;
-  --color-inverse-on-surface: #eff1f4;
-
-  --spacing-gutter: 24px;
-  --spacing-margin-page: 32px;
-  --spacing-stack-sm: 8px;
-  --spacing-stack-md: 16px;
-  --spacing-stack-lg: 24px;
-  --spacing-sidebar-width: 280px;
-  --spacing-header-height: 64px;
-
-  --radius-border: 0.25rem;
-  --radius-border-lg: 0.5rem;
-  --radius-border-xl: 0.75rem;
-
-  --font-family-body: 'Inter', sans-serif;
-  --font-family-headline: 'Inter', sans-serif;
-  --font-family-label: 'Inter', sans-serif;
-  --font-family-data: 'Inter', sans-serif;
+* {
+  box-sizing: border-box;
 }
 
-* {
-  border-color: var(--color-surface-container-highest);
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
 }
 
 body {
-  font-family: 'Inter', sans-serif;
-  background-color: var(--color-background);
-  color: var(--color-on-surface);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f7f9fc;
+  color: #1a2a36;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-.soc-glow {
-  box-shadow: 0 0 15px rgba(222, 116, 38, 0.15);
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.row-hover:hover {
-  background-color: rgba(78, 97, 110, 0.02);
-}
-
-.animate-ping {
-  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-@keyframes ping {
-  75%, 100% {
-    transform: scale(2);
-    opacity: 0;
-  }
+a {
+  text-decoration: none;
 }

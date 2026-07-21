@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { Permission, Rol } from '../types';
 
 interface User {
+  usuarioId?: number;
   email: string;
   rol: Rol;
   empresaId?: number | null;

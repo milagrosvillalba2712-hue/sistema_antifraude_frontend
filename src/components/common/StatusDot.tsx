@@ -1,4 +1,3 @@
-import { cn } from '../../utils';
 import type { EstadoUsuario } from '../../types';
 
 interface StatusDotProps {
@@ -8,35 +7,37 @@ interface StatusDotProps {
 }
 
 const statusColors: Record<string, string> = {
-  DISPONIBLE: 'bg-success',
-  EN_REUNION: 'bg-warning',
-  ALMUERZO: 'bg-primary-container',
-  VACACIONES: 'bg-tertiary',
-  CAPACITACION: 'bg-secondary-container',
-  FUERA_OFICINA: 'bg-secondary/40',
-  NO_DISPONIBLE: 'bg-error',
-  PENDIENTE: 'bg-warning',
-  ASIGNADA: 'bg-tertiary',
-  INVESTIGANDO: 'bg-secondary-container',
-  RESUELTA: 'bg-success',
-  DESCARTADA: 'bg-secondary/40',
+  DISPONIBLE: '#2ecc71',
+  EN_REUNION: '#f2994a',
+  ALMUERZO: '#de7426',
+  VACACIONES: '#00658d',
+  CAPACITACION: '#cee2f2',
+  FUERA_OFICINA: '#8c8c8c',
+  NO_DISPONIBLE: '#ba1a1a',
+  PENDIENTE: '#f2994a',
+  ASIGNADA: '#009bd5',
+  INVESTIGANDO: '#cee2f2',
+  RESUELTA: '#2ecc71',
+  DESCARTADA: '#8c8c8c',
 };
 
 const sizeClasses = {
-  sm: 'w-2 h-2',
-  md: 'w-3 h-3',
-  lg: 'w-4 h-4',
+  sm: 8,
+  md: 12,
+  lg: 16,
 };
 
 export default function StatusDot({ status, size = 'md', className }: StatusDotProps) {
   return (
     <span
-      className={cn(
-        'inline-block rounded-full',
-        statusColors[status] || 'bg-secondary/40',
-        sizeClasses[size],
-        className
-      )}
+      className={className}
+      style={{
+        display: 'inline-block',
+        width: sizeClasses[size],
+        height: sizeClasses[size],
+        borderRadius: '50%',
+        backgroundColor: statusColors[status] || '#8c8c8c',
+      }}
     />
   );
 }

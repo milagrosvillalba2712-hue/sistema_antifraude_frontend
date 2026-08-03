@@ -47,10 +47,11 @@ const Login = () => {
           message="Credenciales de Prueba"
           description={
             <Space direction="vertical" size={2}>
-              <Typography.Text>Admin General: admin.general1@regula.com</Typography.Text>
-              <Typography.Text>Admin Empresa: admin.empresa1@demo.com</Typography.Text>
-              <Typography.Text>Analista: analista1@demo.com</Typography.Text>
-              <Typography.Text>Contraseña: password</Typography.Text>
+              <Typography.Text>Admin General: ana.gimenez@regula.local</Typography.Text>
+              <Typography.Text>Admin Empresa: elena.caceres@cliente.local</Typography.Text>
+              <Typography.Text>Supervisor: hector.sosa@cliente.local</Typography.Text>
+              <Typography.Text>Analista: diego.benitez@cliente.local</Typography.Text>
+              <Typography.Text>Contraseña: Regula2026!</Typography.Text>
             </Space>
           }
         />

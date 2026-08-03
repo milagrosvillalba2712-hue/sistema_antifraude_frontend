@@ -121,7 +121,7 @@ export const alertsApi = {
     return response.data;
   },
 
-  reasignar: async (id: number, analistaId: number, motivo: string, observacion?: string): Promise<Alerta> => {
+  reasignar: async (id: number, analistaId: string, motivo: string, observacion?: string): Promise<Alerta> => {
     const response = await api.post<Alerta>(`/alertas/${id}/reassign`, { analistaId, motivo, observacion });
     return response.data;
   },

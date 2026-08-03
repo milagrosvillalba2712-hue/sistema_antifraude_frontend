@@ -5,6 +5,8 @@ export type Rol =
   | 'ADMIN_EMPRESA'
   | 'GERENTE_SUPERVISOR';
 
+export type UUID = string;
+
 export type Permission =
   | 'EMPRESAS_VER' | 'EMPRESAS_EDITAR'
   | 'LICENCIAS_VER' | 'LICENCIAS_GESTIONAR'
@@ -45,21 +47,21 @@ export interface LoginRequest {
 export interface LoginResponse {
   token: string;
   tipo: string;
-  usuarioId: number;
+  usuarioId: UUID;
   email: string;
   rol: Rol;
-  empresaId: number | null;
+  empresaId: UUID | null;
   rolId: number | null;
   permisos: Permission[];
 }
 
 export interface Usuario {
-  id: number;
+  id: UUID;
   username: string;
   nombreCompleto: string;
   email: string;
   rol: Rol;
-  empresaId: number | null;
+  empresaId: UUID | null;
   empresaNombre?: string | null;
   activo: boolean;
   intentosFallidos: number;
@@ -74,7 +76,7 @@ export interface UsuarioRequest {
   email: string;
   password?: string;
   rol: Rol;
-  empresaId?: number | string | null;
+  empresaId?: UUID | null;
 }
 
 export interface Pais {
@@ -237,14 +239,14 @@ export interface Alerta {
   score: number;
   estado: EstadoAlerta;
   observacion: string | null;
-  asignadoA: number | null;
+  asignadoA: UUID | null;
   asignadoNombre?: string;
   fechaGeneracion: string;
   fechaResolucion: string | null;
 }
 
 export interface AnalistaDisponible {
-  usuarioId: number;
+  usuarioId: UUID;
   nombre: string;
   email: string;
   estado: string;
@@ -269,7 +271,7 @@ export interface ResolucionAlertaRequest {
 export interface ResolucionAlerta extends ResolucionAlertaRequest {
   id: number;
   alertaId: number;
-  usuarioId: number | null;
+  usuarioId: UUID | null;
   usuarioNombre: string | null;
   fechaResolucion: string;
 }
@@ -401,7 +403,7 @@ export interface AprobacionSupervisor {
   id: number;
   alertaId: number;
   resolucionId: number | null;
-  supervisorId: number | null;
+  supervisorId: UUID | null;
   supervisorNombre: string | null;
   estado: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | string;
   observacion: string | null;
@@ -493,7 +495,7 @@ export interface Caso {
   estado: EstadoCaso;
   prioridad: PrioridadAlerta;
   score: number | null;
-  usuarioAnalistaId: number | null;
+  usuarioAnalistaId: UUID | null;
   usuarioAnalistaNombre?: string;
   fechaApertura: string;
   fechaCierre: string | null;
@@ -561,7 +563,7 @@ export interface SimuladorResponse {
 
 export interface PerfilUsuario {
   id: number;
-  usuarioId: number;
+  usuarioId: UUID;
   fotoUrl: string | null;
   telefono: string | null;
   biografia: string | null;
@@ -575,7 +577,7 @@ export interface PerfilUsuario {
 
 export interface Disponibilidad {
   id: number;
-  usuarioId: number;
+  usuarioId: UUID;
   estado: EstadoUsuario;
   emoji: string | null;
   mensajePersonalizado: string | null;
@@ -592,9 +594,9 @@ export interface Disponibilidad {
 export interface HistorialAsignacion {
   id: number;
   alertaId: number;
-  usuarioOrigenId: number | null;
+  usuarioOrigenId: UUID | null;
   usuarioOrigenNombre: string | null;
-  usuarioDestinoId: number;
+  usuarioDestinoId: UUID;
   usuarioDestinoNombre: string;
   fecha: string;
   motivo: string | null;
@@ -610,7 +612,7 @@ export interface TimelineEvent {
 }
 
 export interface WorkloadData {
-  usuarioId: number;
+  usuarioId: UUID;
   nombre: string;
   alertasAsignadas: number;
   alertasPendientes: number;
@@ -629,7 +631,7 @@ export interface ReglaHistorialVersion {
   version: number;
   snapshotJson: string;
   motivoCambio: string;
-  usuarioId: number;
+  usuarioId: UUID;
   usuarioNombre?: string;
   fechaHora: string;
 }

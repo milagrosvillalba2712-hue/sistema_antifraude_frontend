@@ -9,15 +9,15 @@ export const licensingApi = {
     const { data } = await api.get('/licensing/planes');
     return data;
   },
-  suscripciones: async (empresaId?: number | null): Promise<Record<string, unknown>[]> => {
+  suscripciones: async (empresaId?: string | null): Promise<Record<string, unknown>[]> => {
     const { data } = await api.get('/licensing/suscripciones', { params: empresaId ? { empresaId } : undefined });
     return data;
   },
-  pagos: async (empresaId?: number | null): Promise<Record<string, unknown>[]> => {
+  pagos: async (empresaId?: string | null): Promise<Record<string, unknown>[]> => {
     const { data } = await api.get('/licensing/pagos', { params: empresaId ? { empresaId } : undefined });
     return data;
   },
-  uso: async (empresaId?: number | null): Promise<Record<string, unknown>[]> => {
+  uso: async (empresaId?: string | null): Promise<Record<string, unknown>[]> => {
     const { data } = await api.get('/licensing/uso', { params: empresaId ? { empresaId } : undefined });
     return data;
   },

@@ -107,7 +107,7 @@ const Alerts = () => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [filters, setFilters] = useState<Record<string, unknown>>(defaultFilters);
-  const [reassignTarget, setReassignTarget] = useState<number | undefined>();
+  const [reassignTarget, setReassignTarget] = useState<string | undefined>();
   const [reassignReason, setReassignReason] = useState('');
   const [reassignObservation, setReassignObservation] = useState('');
   const [editingEvidence, setEditingEvidence] = useState<EvidenciaAlerta | null>(null);
@@ -521,7 +521,7 @@ interface DetailModalProps {
   analysts: AnalistaDisponible[];
   canReassign: boolean;
   canResolve: boolean;
-  reassignTarget?: number;
+  reassignTarget?: string;
   reassignReason: string;
   reassignObservation: string;
   onClose: () => void;
@@ -529,7 +529,7 @@ interface DetailModalProps {
   onResolve: () => void;
   onReassignTab: () => void;
   onReassign: () => void;
-  onReassignTarget: (value?: number) => void;
+  onReassignTarget: (value?: string) => void;
   onReassignReason: (value: string) => void;
   onReassignObservation: (value: string) => void;
 }
@@ -659,11 +659,11 @@ const EvidenceForm = ({ form, editing, onSave }: { form: ReturnType<typeof Form.
 
 const ReassignPanel = ({ analysts, currentAssignedId, target, reason, observation, onTarget, onReason, onObservation, onSubmit }: {
   analysts: AnalistaDisponible[];
-  currentAssignedId?: number | null;
-  target?: number;
+  currentAssignedId?: string | null;
+  target?: string;
   reason: string;
   observation: string;
-  onTarget: (value?: number) => void;
+  onTarget: (value?: string) => void;
   onReason: (value: string) => void;
   onObservation: (value: string) => void;
   onSubmit: () => void;

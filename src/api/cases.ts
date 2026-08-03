@@ -32,7 +32,7 @@ export const casesApi = {
     return response.data;
   },
 
-  asignarAnalista: async (id: number, analistaId: number): Promise<Caso> => {
+  asignarAnalista: async (id: number, analistaId: string): Promise<Caso> => {
     const response = await api.patch<Caso>(`/casos/${id}/asignar?analistaId=${analistaId}`);
     return response.data;
   },

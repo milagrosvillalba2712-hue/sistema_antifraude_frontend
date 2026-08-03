@@ -2,12 +2,12 @@ import api from './axios';
 import type { WorkloadData } from '../types';
 
 export const assignmentApi = {
-  run: async (alertaId: number): Promise<{ message: string; alertaId: number; asignadoA: number }> => {
+  run: async (alertaId: number): Promise<{ message: string; alertaId: number; asignadoA: string }> => {
     const { data } = await api.post('/assignment/run', { alertaId });
     return data;
   },
 
-  rebalance: async (usuarioId?: number): Promise<{ message: string }> => {
+  rebalance: async (usuarioId?: string): Promise<{ message: string }> => {
     const { data } = await api.post('/assignment/rebalance', { usuarioId });
     return data;
   },

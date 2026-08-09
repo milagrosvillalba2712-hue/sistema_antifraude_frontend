@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeftOutlined,
@@ -797,7 +798,23 @@ const ResolverHeader = ({ alert }: { alert: Alerta }) => (
 );
 
 const objectItems = (data?: Record<string, unknown> | null, omit: string[] = []) => Object.entries(data || {}).filter(([key, value]) => !omit.includes(key) && value !== null && value !== undefined).map(([key, value]) => ({ key, label: labelFor(key), children: text(value) }));
-const text = (value: unknown) => typeof value === 'boolean' ? (value ? 'Sí' : 'No') : String(value ?? '-');
+const text = (value: unknown): ReactNode => {
+  if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+  if (Array.isArray(value)) {
+    if (value.length === 0) return '-';
+    return (
+      <Space direction="vertical" size={2}>
+        {value.map((item, index) => <Typography.Text key={index}>{text(item)}</Typography.Text>)}
+      </Space>
+    );
+  }
+  if (value && typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, entry]) => `${labelFor(key)}: ${typeof entry === 'boolean' ? (entry ? 'Sí' : 'No') : String(entry ?? '-')}`)
+      .join(' · ');
+  }
+  return String(value ?? '-');
+};
 const labelDictionary: Record<string, string> = {
   id: 'ID',
   codigo: 'Código',

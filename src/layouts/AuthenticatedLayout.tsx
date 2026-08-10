@@ -19,6 +19,7 @@ import {
 import { Avatar, Badge, Button, Drawer, Grid, Layout, Menu, Space, Typography } from 'antd';
 import { useAuthStore } from '../store';
 import { RegulaIcon } from '../components/common';
+import { BannerLicencia } from '../components/licencia';
 import { alertsApi } from '../api';
 
 const { Header, Sider, Content } = Layout;
@@ -176,6 +177,7 @@ export const AuthenticatedLayout = () => {
           </Space>
         </Header>
         <Content style={{ padding: 24, minHeight: 'calc(100vh - 64px)' }}>
+          <BannerLicencia />
           <Outlet />
         </Content>
       </Layout>

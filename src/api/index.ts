@@ -13,3 +13,4 @@ export { motorApi } from './motor';
 export { escenariosApi } from './escenarios';
 export { ruleEngineApi } from './ruleEngine';
 export { licensingApi } from './licensing';
+export { licensingLocalApi } from './licensingLocal';

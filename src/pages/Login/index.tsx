@@ -1,4 +1,5 @@
 import { Alert, Button, Card, Form, Input, Space, Typography } from 'antd';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks';
 import { RegulaIcon } from '../../components/common';
 
@@ -40,6 +41,12 @@ const Login = () => {
             Iniciar Sesión
           </Button>
         </Form>
+
+        <Typography.Text style={{ textAlign: 'center', display: 'block' }}>
+          <Link to="/forgot-password">¿Olvidaste tu contraseña?</Link>
+          <span> · </span>
+          <Link to="/register">Registrarme</Link>
+        </Typography.Text>
 
         <Alert
           type="info"

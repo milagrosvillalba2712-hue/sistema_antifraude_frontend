@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import dayjs from 'dayjs';
-import { Avatar, Button, Card, DatePicker, Empty, Form, Input, List, Select, Space, Spin, Tag, Typography } from 'antd';
-import { CalendarOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
+import { Alert, Avatar, Button, Card, DatePicker, Empty, Form, Input, List, Select, Space, Spin, Tag, Typography, message } from 'antd';
+import { CalendarOutlined, DeleteOutlined, KeyOutlined, UserOutlined } from '@ant-design/icons';
 import { useConfirmAction } from '../../components/common';
 import { useProfileStore } from '../../store/profileStore';
+import { authApi } from '../../api';
 import { formatDate } from '../../utils';
 import type { EstadoUsuario } from '../../types';
 
@@ -24,6 +25,25 @@ const Profile = () => {
   const { confirm, confirmationModal } = useConfirmAction();
   const [profileForm] = Form.useForm();
   const [scheduleForm] = Form.useForm();
+  const [passwordForm] = Form.useForm();
+
+  const handleChangePassword = async (values: {
+    passwordActual: string;
+    nuevaPassword: string;
+    confirmPassword: string;
+  }) => {
+    if (values.nuevaPassword !== values.confirmPassword) {
+      message.error('Las contrasenas no coinciden.');
+      return;
+    }
+    try {
+      await authApi.changePassword(values.passwordActual, values.nuevaPassword);
+      message.success('Contrasena actualizada correctamente.');
+      passwordForm.resetFields();
+    } catch (error: unknown) {
+      message.error(error instanceof Error ? error.message : 'No se pudo actualizar la contrasena');
+    }
+  };
 
   useEffect(() => {
     fetchProfile();
@@ -117,6 +137,35 @@ const Profile = () => {
                 <Input.TextArea rows={3} placeholder="Motivo visible para supervisores o asignaciones" />
               </Form.Item>
               <Button type="primary" htmlType="submit">Crear Programacion</Button>
+            </Form>
+          </Card>
+
+          <Card title={<Space><KeyOutlined />Cambiar Contraseña</Space>}>
+            <Form form={passwordForm} layout="vertical" onFinish={handleChangePassword}>
+              <Form.Item label="Contraseña Actual" name="passwordActual" rules={[{ required: true, message: 'Ingresa tu contrasena actual' }]}>
+                <Input.Password placeholder="Contraseña actual" autoComplete="current-password" />
+              </Form.Item>
+              <Form.Item
+                label="Nueva Contraseña"
+                name="nuevaPassword"
+                rules={[{ required: true, message: 'Ingresa la nueva contrasena' }, { min: 10, message: 'Minimo 10 caracteres' }]}
+              >
+                <Input.Password placeholder="Minimo 10 caracteres" autoComplete="new-password" />
+              </Form.Item>
+              <Form.Item
+                label="Confirmar Nueva Contraseña"
+                name="confirmPassword"
+                rules={[{ required: true, message: 'Confirma la nueva contrasena' }]}
+              >
+                <Input.Password placeholder="Repite la nueva contrasena" autoComplete="new-password" />
+              </Form.Item>
+              <Alert
+                type="info"
+                showIcon
+                message="Al cambiar la contrasena se invalidan las sesiones previas."
+                style={{ marginBottom: 16 }}
+              />
+              <Button type="primary" htmlType="submit">Actualizar Contraseña</Button>
             </Form>
           </Card>
         </Space>

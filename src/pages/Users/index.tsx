@@ -1,29 +1,35 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { EditOutlined, PlusOutlined, StopOutlined, TeamOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Form, Input, Modal, Select, Space, Table, Tag, Typography } from 'antd';
+import { EditOutlined, MailOutlined, PlusOutlined, StopOutlined, TeamOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Form, Input, Modal, Select, Space, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { licensingApi, usersApi } from '../../api';
 import { ActionDropdown, useConfirmAction } from '../../components/common';
-import { formatDate, usuarioSchema, type UsuarioFormData } from '../../utils';
+import { formatDate, formatCurrency, usuarioSchema, type UsuarioFormData } from '../../utils';
+import { useAuthStore } from '../../store';
 import type { Usuario } from '../../types';
 
 const roleOptions = [
+  { value: 'ADMINISTRADOR', label: 'Administrador' },
+  { value: 'SUPERVISOR', label: 'Supervisor' },
   { value: 'ANALISTA', label: 'Analista' },
-  { value: 'GERENTE_SUPERVISOR', label: 'Gerente Supervisor' },
-  { value: 'ADMIN_EMPRESA', label: 'Admin Empresa' },
-  { value: 'ADMIN_GENERAL', label: 'Admin General' },
   { value: 'AUDITOR', label: 'Auditor' },
 ];
 
 const Users = () => {
+  const { user } = useAuthStore();
+  const empresaId = user?.empresaId;
   const [users, setUsers] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<Usuario | null>(null);
   const [empresas, setEmpresas] = useState<Record<string, unknown>[]>([]);
+  const [preciosRol, setPreciosRol] = useState<Record<string, { precioAnual: string | number }>>({});
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteCodigo, setInviteCodigo] = useState<string | null>(null);
+  const [inviteForm] = Form.useForm<{ rol: string; empresaId?: string; email?: string }>();
   const { confirm, confirmationModal } = useConfirmAction();
 
   const {
@@ -47,19 +53,34 @@ const Users = () => {
     try {
       setLoading(true);
       setError(null);
-      const [data, empresasData] = await Promise.all([
+      const [data, empresasData, suscripciones] = await Promise.all([
         usersApi.getAll(),
         licensingApi.empresas(),
+        licensingApi.suscripciones(empresaId ?? null),
       ]);
       setUsers(data);
       setEmpresas(empresasData);
+      const planId = Number((suscripciones[0] as { planId?: unknown } | undefined)?.planId ?? 0);
+      if (planId) {
+        const precios = await licensingApi.preciosRol(planId);
+        setPreciosRol(
+          Object.fromEntries(
+            precios.map((precio) => [
+              String(precio.rol),
+              { precioAnual: precio.precioAnual as string | number },
+            ])
+          )
+        );
+      } else {
+        setPreciosRol({});
+      }
     } catch (err) {
       setError('Error al cargar los usuarios');
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [empresaId]);
 
   useEffect(() => {
     fetchUsers();
@@ -115,6 +136,52 @@ const Users = () => {
     });
   };
 
+  const handleInvite = async (values: { rol: string; empresaId?: string; email?: string }) => {
+    if (!values.empresaId) {
+      message.warning('Selecciona una empresa para la invitacion.');
+      return;
+    }
+    try {
+      const respuesta = await usersApi.crearInvitacion({
+        rol: values.rol,
+        empresaId: values.empresaId,
+        email: values.email || undefined,
+      });
+      setInviteCodigo(String((respuesta as { codigo?: unknown }).codigo ?? ''));
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'No se pudo generar la invitacion');
+    }
+  };
+
+  const closeInvite = () => {
+    setInviteOpen(false);
+    setInviteCodigo(null);
+    inviteForm.resetFields();
+  };
+
+  const pricingColumns: ColumnsType<{ rol: string; precioAnual: string | number }> = [
+    {
+      title: 'Rol',
+      dataIndex: 'rol',
+      key: 'rol',
+      render: (rol: string) => (
+        <Tag color={rol === 'ADMINISTRADOR' ? 'gold' : 'blue'}>{rol}</Tag>
+      ),
+    },
+    {
+      title: 'Precio Anual Adicional (USD)',
+      dataIndex: 'precioAnual',
+      key: 'precioAnual',
+      align: 'right',
+      render: (precio) => formatCurrency(Number(precio)),
+    },
+  ];
+
+  const pricingData = Object.entries(preciosRol).map(([rol, precio]) => ({
+    rol,
+    precioAnual: precio.precioAnual,
+  }));
+
   const handleCloseForm = () => {
     setShowForm(false);
     setEditingUser(null);
@@ -156,7 +223,14 @@ const Users = () => {
           <Typography.Title level={2} style={{ margin: 0 }}>Gestión de Usuarios</Typography.Title>
           <Typography.Text type="secondary">Administra usuarios, roles y empresa asociada.</Typography.Text>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Nuevo Usuario</Button>
+        <Space>
+          <Button icon={<MailOutlined />} onClick={() => setInviteOpen(true)}>
+            Generar Invitación
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+            Nuevo Usuario
+          </Button>
+        </Space>
       </Space>
 
       {error && <Alert type="error" showIcon message={error} action={<Button onClick={fetchUsers}>Reintentar</Button>} />}
@@ -178,7 +252,16 @@ const Users = () => {
           <Controller name="nombreCompleto" control={control} render={({ field }) => <Form.Item label="Nombre Completo" validateStatus={errors.nombreCompleto ? 'error' : undefined} help={errors.nombreCompleto?.message}><Input {...field} placeholder="Nombre completo del usuario" /></Form.Item>} />
           <Controller name="email" control={control} render={({ field }) => <Form.Item label="Email" validateStatus={errors.email ? 'error' : undefined} help={errors.email?.message}><Input {...field} type="email" placeholder="correo@ejemplo.com" /></Form.Item>} />
           <Controller name="password" control={control} render={({ field }) => <Form.Item label={editingUser ? 'Nueva Contraseña' : 'Contraseña'} validateStatus={errors.password ? 'error' : undefined} help={errors.password?.message || (editingUser ? 'Dejar vacío para mantener la actual.' : undefined)}><Input.Password {...field} placeholder="Contraseña" /></Form.Item>} />
-          <Controller name="rol" control={control} render={({ field }) => <Form.Item label="Rol" validateStatus={errors.rol ? 'error' : undefined} help={errors.rol?.message}><Select {...field} options={roleOptions} /></Form.Item>} />
+          <Controller name="rol" control={control} render={({ field }) => (
+            <Form.Item
+              label="Rol"
+              validateStatus={errors.rol ? 'error' : undefined}
+              help={errors.rol?.message}
+              extra={field.value && preciosRol[field.value] && !editingUser ? `Precio anual adicional para este rol: ${formatCurrency(Number(preciosRol[field.value].precioAnual))}` : undefined}
+            >
+              <Select {...field} options={roleOptions} />
+            </Form.Item>
+          )} />
           <Controller
             name="empresaId"
             control={control}
@@ -199,6 +282,60 @@ const Users = () => {
           </Space>
         </Form>
       </Modal>
+
+      <Card title={<Space><MailOutlined />Precios De Usuarios Adicionales (USD / año)</Space>}>
+        <Table
+          rowKey="rol"
+          columns={pricingColumns}
+          dataSource={pricingData}
+          pagination={false}
+          size="small"
+          locale={{ emptyText: 'No hay precios configurados para el plan activo.' }}
+        />
+      </Card>
+
+      <Modal
+        open={inviteOpen}
+        onCancel={closeInvite}
+        title={<Space><MailOutlined />Generar Invitación</Space>}
+        footer={inviteCodigo ? null : [
+          <Button key="cancel" onClick={closeInvite}>Cancelar</Button>,
+          <Button key="ok" type="primary" onClick={() => inviteForm.submit()}>Generar Invitación</Button>,
+        ]}
+        centered
+        width={520}
+      >
+        {inviteCodigo ? (
+          <Alert
+            type="success"
+            showIcon
+            message="Invitación generada"
+            description={
+              <Space direction="vertical">
+                <Typography.Text>Comparte este código con el usuario invitado (se usa en el registro con invitación):</Typography.Text>
+                <Typography.Text code copyable style={{ fontSize: 16 }}>{inviteCodigo}</Typography.Text>
+                <Typography.Text type="secondary">Si cargaste un email, también se envía la invitación por correo.</Typography.Text>
+              </Space>
+            }
+          />
+        ) : (
+          <Form form={inviteForm} layout="vertical" onFinish={handleInvite} requiredMark={false}>
+            <Form.Item label="Rol" name="rol" rules={[{ required: true, message: 'Selecciona un rol' }]}>
+              <Select options={roleOptions} placeholder="Rol del invitado" />
+            </Form.Item>
+            <Form.Item label="Empresa" name="empresaId" rules={[{ required: true, message: 'Selecciona una empresa' }]}>
+              <Select
+                placeholder="Empresa destino"
+                options={empresas.map((empresa) => ({ value: String(empresa.id), label: `${String(empresa.codigo ?? empresa.id)} - ${String(empresa.nombre ?? '')}` }))}
+              />
+            </Form.Item>
+            <Form.Item label="Email (opcional)" name="email" rules={[{ type: 'email', message: 'Email invalido' }]}>
+              <Input placeholder="correo@ejemplo.com" />
+            </Form.Item>
+          </Form>
+        )}
+      </Modal>
+
       {confirmationModal}
     </Space>
   );

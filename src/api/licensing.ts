@@ -29,4 +29,12 @@ export const licensingApi = {
     const { data } = await api.get('/licensing/permisos');
     return data;
   },
+  limites: async (empresaId: string): Promise<Record<string, unknown>> => {
+    const { data } = await api.get('/licensing/limites', { params: { empresaId } });
+    return data;
+  },
+  preciosRol: async (planId: number): Promise<Record<string, unknown>[]> => {
+    const { data } = await api.get(`/licensing/planes/${planId}/precios-rol`);
+    return data;
+  },
 };

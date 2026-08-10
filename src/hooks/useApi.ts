@@ -40,8 +40,12 @@ export function useApi<T>({ apiCall, immediate = true }: UseApiOptions<T>): UseA
 
   useEffect(() => {
     if (immediate) {
-      execute();
+      const timer = window.setTimeout(() => {
+        execute().catch(() => undefined);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
+    return undefined;
   }, [immediate, execute]);
 
   return { data, loading, error, execute, reset };

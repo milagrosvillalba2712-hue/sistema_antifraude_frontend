@@ -6,6 +6,10 @@ import { AuthenticatedLayout } from './layouts/AuthenticatedLayout';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 
 const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Alerts = lazy(() => import('./pages/Alerts'));
 const RuleEngine = lazy(() => import('./pages/RuleEngine'));
@@ -30,6 +34,10 @@ function App() {
         <Routes>
           <Route element={<PublicLayout />}>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
           </Route>
 
         <Route element={<ProtectedRoute />}>

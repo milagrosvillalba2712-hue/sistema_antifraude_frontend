@@ -25,6 +25,11 @@ export const usersApi = {
   deactivate: async (id: string): Promise<void> => {
     await api.delete(`/admin/users/${id}`);
   },
+
+  crearInvitacion: async (payload: { rol: string; empresaId: string; email?: string }): Promise<Record<string, unknown>> => {
+    const response = await api.post('/admin/invitaciones', payload);
+    return response.data;
+  },
 };
 
 const toApiPayload = (data: UsuarioRequest) => ({

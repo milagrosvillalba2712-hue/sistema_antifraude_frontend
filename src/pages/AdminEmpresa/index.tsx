@@ -4,6 +4,7 @@ import { Card, Col, Row, Space, Statistic, Table, Tabs, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table';
 import { licensingApi } from '../../api';
 import { useAuthStore } from '../../store';
+import { ConsumoVsPlan, EventosLicencia, INSTALACION_STORAGE_KEY, InstalacionLicenciaCard } from '../../components/licencia';
 
 const AdminEmpresa = () => {
   const { user } = useAuthStore();
@@ -11,6 +12,8 @@ const AdminEmpresa = () => {
   const [pagos, setPagos] = useState<Record<string, unknown>[]>([]);
   const [uso, setUso] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const suscripcionActivaId = Number((suscripciones[0] as { idSuscripcion?: unknown } | undefined)?.idSuscripcion ?? 0) || null;
 
   useEffect(() => {
     const load = async () => {
@@ -49,7 +52,17 @@ const AdminEmpresa = () => {
         items={[
           { key: 'suscripciones', label: 'Suscripcion Activa', children: <DataTable rows={suscripciones} loading={loading} /> },
           { key: 'pagos', label: 'Pagos Realizados', children: <DataTable rows={pagos} loading={loading} /> },
-          { key: 'uso', label: 'Consumo Del Mes', children: <DataTable rows={uso} loading={loading} /> },
+          { key: 'uso', label: 'Consumo Del Mes', children: <ConsumoVsPlan empresaId={user?.empresaId} /> },
+          {
+            key: 'licencia',
+            label: 'Licencia On-Premise',
+            children: (
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <InstalacionLicenciaCard empresaId={user?.empresaId} suscripcionActivaId={suscripcionActivaId} />
+                <EventosLicencia instalacionId={localStorage.getItem(INSTALACION_STORAGE_KEY)} />
+              </Space>
+            ),
+          },
         ]}
       />
     </Space>

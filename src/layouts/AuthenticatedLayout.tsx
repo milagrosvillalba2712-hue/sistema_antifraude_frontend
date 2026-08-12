@@ -1,48 +1,72 @@
-import { useEffect, useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  AlertTriangle,
-  FileText,
-  Search,
-  Users,
-  Menu,
-  X,
-  Settings,
-  User,
-  History,
-  ChevronsLeft,
-  ChevronsRight,
-  Workflow,
-  Building2,
-  BadgeCheck,
-} from 'lucide-react';
+  AlertOutlined,
+  AuditOutlined,
+  BankOutlined,
+  BarChartOutlined,
+  FileTextOutlined,
+  HistoryOutlined,
+  MenuFoldOutlined,
+  MenuOutlined,
+  MenuUnfoldOutlined,
+  SafetyCertificateOutlined,
+  SearchOutlined,
+  SettingOutlined,
+  TeamOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
+import { Avatar, Badge, Button, Drawer, Grid, Layout, Menu, Space, Typography } from 'antd';
 import { useAuthStore } from '../store';
-import { cn } from '../utils';
 import { RegulaIcon } from '../components/common';
+import { BannerLicencia } from '../components/licencia';
 import { alertsApi } from '../api';
 
+const { Header, Sider, Content } = Layout;
+
 const navigation = [
-  { name: 'Admin General', href: '/admin-general', icon: Building2, permission: 'EMPRESAS_VER' },
-  { name: 'Admin Empresa', href: '/admin-empresa', icon: BadgeCheck, permission: 'LICENCIAS_VER' },
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'ALERTAS_VER' },
-  { name: 'Alertas', href: '/alerts', icon: AlertTriangle, permission: 'ALERTAS_VER', badge: true },
-  { name: 'Motor de Reglas', href: '/rule-engine', icon: Workflow, permission: 'REGLAS_VER' },
-  { name: 'Motor Historial', href: '/motor/historial', icon: History, permission: 'AUDITORIA_VER' },
-  { name: 'KYC', href: '/kyc', icon: Search, permission: 'ALERTAS_VER' },
-  { name: 'Reportes', href: '/reports', icon: FileText, permission: 'REPORTES_VER' },
-  { name: 'Usuarios', href: '/users', icon: Users, permission: 'USUARIOS_VER' },
-  { name: 'Mi Perfil', href: '/profile', icon: User },
+  { key: '/admin-general', name: 'Admin General', icon: <BankOutlined />, permission: 'EMPRESAS_VER' },
+  { key: '/admin-empresa', name: 'Admin Empresa', icon: <SafetyCertificateOutlined />, permission: 'LICENCIAS_VER' },
+  { key: '/dashboard', name: 'Dashboard', icon: <BarChartOutlined />, permission: 'ALERTAS_VER' },
+  { key: '/alerts', name: 'Alertas', icon: <AlertOutlined />, permission: 'ALERTAS_VER', badge: true },
+  { key: '/rule-engine', name: 'Motor de Reglas', icon: <AuditOutlined />, permission: 'REGLAS_VER' },
+  { key: '/motor/historial', name: 'Motor Historial', icon: <HistoryOutlined />, permission: 'AUDITORIA_VER' },
+  { key: '/kyc', name: 'KYC', icon: <SearchOutlined />, permission: 'ALERTAS_VER' },
+  { key: '/reports', name: 'Reportes', icon: <FileTextOutlined />, permission: 'REPORTES_VER' },
+  { key: '/users', name: 'Usuarios', icon: <TeamOutlined />, permission: 'USUARIOS_VER' },
+  { key: '/profile', name: 'Mi Perfil', icon: <UserOutlined /> },
 ];
 
 export const AuthenticatedLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const screens = Grid.useBreakpoint();
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
   const [unassignedAlerts, setUnassignedAlerts] = useState(0);
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, hasPermission } = useAuthStore();
 
-  const filteredNavigation = navigation.filter((item) => !item.permission || hasPermission(item.permission as never));
+  const filteredNavigation = useMemo(
+    () => navigation.filter((item) => !item.permission || hasPermission(item.permission as never)),
+    [hasPermission]
+  );
+
+  const selectedKey = useMemo(() => {
+    if (location.pathname.startsWith('/alerts')) return '/alerts';
+    if (location.pathname === '/rules') return '/rule-engine';
+    return filteredNavigation.find((item) => location.pathname.startsWith(item.key))?.key || location.pathname;
+  }, [filteredNavigation, location.pathname]);
+
+  const menuItems = filteredNavigation.map((item) => ({
+    key: item.key,
+    icon: item.icon,
+    label: (
+      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+        <span>{item.name}</span>
+        {item.badge && unassignedAlerts > 0 && <Badge count={unassignedAlerts} size="small" />}
+      </Space>
+    ),
+  }));
 
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', String(collapsed));
@@ -66,190 +90,97 @@ export const AuthenticatedLayout = () => {
     };
   }, []);
 
-  const getUserInitials = () => {
-    if (user?.email) {
-      return user.email.charAt(0).toUpperCase();
-    }
-    return 'U';
-  };
+  const userInitial = user?.email?.charAt(0).toUpperCase() || 'U';
+
+  const brand = (
+    <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 56, color: '#fff' }}>
+      <RegulaIcon size={36} />
+      {!collapsed && (
+        <div style={{ minWidth: 0 }}>
+          <Typography.Text style={{ color: '#fff', display: 'block', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>Regula</Typography.Text>
+          <Typography.Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11 }}>Risk Platform</Typography.Text>
+        </div>
+      )}
+    </Link>
+  );
+
+  const menu = (
+    <Menu
+      theme="dark"
+      mode="inline"
+      selectedKeys={[selectedKey]}
+      items={menuItems}
+      onClick={({ key }) => {
+        navigate(String(key));
+        setDrawerOpen(false);
+      }}
+      style={{ borderInlineEnd: 0 }}
+    />
+  );
 
   return (
-    <div className="min-h-screen bg-surface">
-      {/* Mobile sidebar */}
-      <div
-        className={cn(
-          'fixed inset-0 z-50 lg:hidden',
-          sidebarOpen ? 'block' : 'hidden'
-        )}
+    <Layout style={{ minHeight: '100vh' }}>
+      <Sider
+        collapsible
+        collapsed={collapsed}
+        trigger={null}
+        width={280}
+        collapsedWidth={88}
+        breakpoint="lg"
+        style={{ position: 'fixed', insetInlineStart: 0, top: 0, bottom: 0, zIndex: 100, overflow: 'auto', display: screens.lg ? 'block' : 'none' }}
       >
-        <div
-          className="fixed inset-0 bg-black/50"
-          onClick={() => setSidebarOpen(false)}
-        />
-        <div className="fixed inset-y-0 left-0 flex w-[280px] flex-col bg-secondary">
-          <div className="px-6 mb-10 flex items-center justify-between py-6">
-            <div className="flex items-center gap-3">
-              <RegulaIcon className="w-10 h-10" />
-              <div>
-                <h1 className="text-headline-sm font-bold text-white leading-tight">Regula</h1>
-              </div>
-            </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="text-white/40 hover:text-white"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-          <nav className="flex-1 space-y-1">
-            {filteredNavigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    'flex items-center gap-3 px-6 py-3 transition-colors duration-200',
-                    isActive
-                      ? 'bg-primary-container text-on-primary-container border-l-4 border-white'
-                      : 'text-white/70 hover:text-white hover:bg-white/5'
-                  )}
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span className={cn('text-body-md', isActive ? 'font-semibold' : '')}>
-                    {item.name}
-                  </span>
-                  {item.badge && unassignedAlerts > 0 && (
-                    <span className="ml-auto bg-critical text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                      {unassignedAlerts}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="mt-auto px-6 pt-6 border-t border-white/10">
-            <Link
-              to="/profile"
-              className="flex items-center gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-            >
-              <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-white font-bold text-xs">
-                {getUserInitials()}
-              </div>
-              <div className="overflow-hidden">
-                <p className="text-white text-xs font-bold truncate">{user?.email}</p>
-                <p className="text-white/40 text-[10px] truncate">{user?.rol}</p>
-              </div>
-              <Settings className="w-4 h-4 text-white/40 ml-auto" />
-            </Link>
-          </div>
+        <div style={{ padding: collapsed ? '20px 18px' : '20px 24px', display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', gap: 8 }}>
+          {brand}
+          {!collapsed && <Button type="text" icon={<MenuFoldOutlined />} onClick={() => setCollapsed(true)} style={{ color: '#fff' }} />}
+          {collapsed && <Button type="text" icon={<MenuUnfoldOutlined />} onClick={() => setCollapsed(false)} style={{ color: '#fff' }} />}
         </div>
-      </div>
+        {menu}
+        <div style={{ position: 'absolute', bottom: 0, width: '100%', padding: 16, borderTop: '1px solid rgba(255,255,255,0.12)' }}>
+          <Link to="/profile" style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', gap: 10, color: '#fff' }}>
+            <Space>
+              <Avatar style={{ backgroundColor: '#de7426' }}>{userInitial}</Avatar>
+              {!collapsed && (
+                <div style={{ maxWidth: 160 }}>
+                  <Typography.Text ellipsis style={{ color: '#fff', display: 'block', fontSize: 12, fontWeight: 700 }}>{user?.email}</Typography.Text>
+                  <Typography.Text ellipsis style={{ color: 'rgba(255,255,255,0.45)', display: 'block', fontSize: 11 }}>{user?.rol}</Typography.Text>
+                </div>
+              )}
+            </Space>
+            {!collapsed && <SettingOutlined style={{ color: 'rgba(255,255,255,0.45)' }} />}
+          </Link>
+        </div>
+      </Sider>
 
-      {/* Desktop sidebar */}
-      <div className={cn('hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-200', collapsed ? 'lg:w-[88px]' : 'lg:w-[280px]')}>
-        <div className="flex flex-col flex-grow bg-secondary py-6">
-          <div className={cn('mb-10 flex px-4', collapsed ? 'flex-col items-center gap-3' : 'items-center justify-between gap-3 px-6')}>
-            <div className={cn('flex items-center gap-3 overflow-hidden', collapsed && 'justify-center')}>
-            <RegulaIcon className="h-10 w-10 shrink-0" />
-            {!collapsed && <div>
-              <h1 className="text-headline-sm font-bold text-white leading-tight">Regula</h1>
-            </div>}
-            </div>
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="rounded-md p-2 text-white/50 hover:bg-white/10 hover:text-white"
-              title={collapsed ? 'Expandir menú' : 'Contraer menú'}
-            >
-              {collapsed ? <ChevronsRight className="h-4 w-4 shrink-0" /> : <ChevronsLeft className="h-4 w-4 shrink-0" />}
-            </button>
-          </div>
-          <nav className="flex-1 space-y-1">
-            {filteredNavigation.map((item) => {
-              const isActive = location.pathname === item.href || (item.href === '/rule-engine' && location.pathname === '/rules');
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  title={collapsed ? item.name : undefined}
-                  className={cn(
-                    'flex items-center gap-3 px-6 py-3 transition-colors duration-200',
-                    collapsed && 'justify-center px-0',
-                    isActive
-                      ? 'bg-primary-container text-on-primary-container border-l-4 border-white'
-                      : 'text-white/70 hover:text-white hover:bg-white/5'
-                  )}
-                >
-                  <item.icon className="w-5 h-5" />
-                  {!collapsed && <span className={cn('text-body-md', isActive ? 'font-semibold' : '')}>
-                    {item.name}
-                  </span>}
-                  {!collapsed && item.badge && unassignedAlerts > 0 && (
-                    <span className="ml-auto bg-critical text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                      {unassignedAlerts}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="mt-auto px-4 pt-6 border-t border-white/10">
-            <Link
-              to="/profile"
-              title={collapsed ? user?.email : undefined}
-              className={cn('flex items-center gap-3 rounded-lg bg-white/5 p-3 transition-colors hover:bg-white/10', collapsed && 'justify-center')}
-            >
-              <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-white font-bold text-xs">
-                {getUserInitials()}
-              </div>
-              {!collapsed && <div className="overflow-hidden">
-                <p className="text-white text-xs font-bold truncate">{user?.email}</p>
-                <p className="text-white/40 text-[10px] truncate">{user?.rol}</p>
-              </div>}
-              {!collapsed && <Settings className="w-4 h-4 text-white/40 ml-auto" />}
-            </Link>
-          </div>
-        </div>
-      </div>
+      <Drawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        placement="left"
+        width={280}
+        styles={{ body: { padding: 0, background: '#4e616e' }, header: { display: 'none' } }}
+      >
+        <div style={{ padding: 24 }}>{brand}</div>
+        {menu}
+      </Drawer>
 
-      {/* Topbar */}
-      <header className={cn('fixed top-0 right-0 z-40 hidden h-16 items-center justify-between border-b border-surface-container-highest bg-white px-gutter transition-all duration-200 lg:flex', collapsed ? 'left-[88px]' : 'left-[280px]')}>
-        <div className="hidden md:flex items-center gap-4">
-          <span className="text-secondary/40 font-medium">Monitoring Platform</span>
-          <span className="text-secondary/20">/</span>
-          <span className="text-secondary font-bold">Real-time Dashboard</span>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3 border-l border-surface-container-highest pl-6">
-            <button className="relative text-secondary/60 hover:text-secondary transition-colors">
-              <AlertTriangle className="w-5 h-5" />
-              <span className="absolute top-0 right-0 w-2 h-2 bg-critical rounded-full border-2 border-white"></span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile topbar */}
-      <div className="lg:hidden sticky top-0 z-40 flex items-center h-16 bg-white border-b border-surface-container-highest">
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="px-4 text-secondary/60 hover:text-secondary"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
-        <div className="flex items-center ml-2">
-          <RegulaIcon className="w-6 h-6" />
-          <span className="ml-2 text-lg font-semibold text-secondary">Regula</span>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className={cn('transition-all duration-200 lg:pt-16', collapsed ? 'lg:pl-[88px]' : 'lg:pl-[280px]')}>
-        <main className="p-gutter min-h-screen">
+      <Layout style={{ marginInlineStart: screens.lg ? (collapsed ? 88 : 280) : 0, transition: 'margin 0.2s ease' }}>
+        <Header style={{ position: 'sticky', top: 0, zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingInline: 24, borderBottom: '1px solid #f0f0f0' }}>
+          <Space>
+            {!screens.lg && <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)} />}
+            <Typography.Text type="secondary">Monitoring Platform</Typography.Text>
+            <Typography.Text strong>{selectedKey === '/alerts' ? 'Alertas' : 'Dashboard'}</Typography.Text>
+          </Space>
+          <Space>
+            <Badge dot={unassignedAlerts > 0}>
+              <AlertOutlined style={{ fontSize: 18, color: '#4e616e' }} />
+            </Badge>
+            <Avatar size="small" style={{ backgroundColor: '#de7426' }}>{userInitial}</Avatar>
+          </Space>
+        </Header>
+        <Content style={{ padding: 24, minHeight: 'calc(100vh - 64px)' }}>
+          <BannerLicencia />
           <Outlet />
-        </main>
-      </div>
-    </div>
+        </Content>
+      </Layout>
+    </Layout>
   );
 };

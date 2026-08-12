@@ -1,31 +1,50 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Card, Result, Spin } from 'antd';
 import { PublicLayout } from './layouts/PublicLayout';
 import { AuthenticatedLayout } from './layouts/AuthenticatedLayout';
 import { ProtectedRoute } from './routes/ProtectedRoute';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Alerts from './pages/Alerts';
-import RuleEngine from './pages/RuleEngine';
-import KYC from './pages/KYC';
-import Reports from './pages/Reports';
-import Users from './pages/Users';
-import Profile from './pages/Profile';
-import MotorHistorial from './pages/MotorHistorial';
-import AdminGeneral from './pages/AdminGeneral';
-import AdminEmpresa from './pages/AdminEmpresa';
+
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Alerts = lazy(() => import('./pages/Alerts'));
+const RuleEngine = lazy(() => import('./pages/RuleEngine'));
+const KYC = lazy(() => import('./pages/KYC'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Users = lazy(() => import('./pages/Users'));
+const Profile = lazy(() => import('./pages/Profile'));
+const MotorHistorial = lazy(() => import('./pages/MotorHistorial'));
+const AdminGeneral = lazy(() => import('./pages/AdminGeneral'));
+const AdminEmpresa = lazy(() => import('./pages/AdminEmpresa'));
+
+const PageLoader = () => (
+  <Card style={{ minHeight: 240, display: 'grid', placeItems: 'center' }}>
+    <Spin tip="Cargando modulo..." />
+  </Card>
+);
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<PublicLayout />}>
-          <Route path="/login" element={<Login />} />
-        </Route>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route element={<PublicLayout />}>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+          </Route>
 
         <Route element={<ProtectedRoute />}>
           <Route element={<AuthenticatedLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/alerts" element={<Alerts />} />
+            <Route path="/alerts/:id/resolver" element={<Alerts />} />
             <Route path="/kyc" element={<KYC />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/profile" element={<Profile />} />
@@ -58,17 +77,11 @@ function App() {
           </Route>
         </Route>
 
-        <Route path="/unauthorized" element={
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-gray-900">Acceso No Autorizado</h1>
-              <p className="mt-2 text-gray-600">No tienes permisos para acceder a esta página.</p>
-            </div>
-          </div>
-        } />
+          <Route path="/unauthorized" element={<Result status="403" title="Acceso No Autorizado" subTitle="No tienes permisos para acceder a esta pagina." />} />
 
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

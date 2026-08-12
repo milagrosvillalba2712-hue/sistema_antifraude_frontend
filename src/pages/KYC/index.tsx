@@ -1,140 +1,86 @@
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Search, Loader2, CheckCircle, XCircle, Info } from 'lucide-react';
+import { SearchOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Descriptions, Form, Input, Result, Space, Tag, Typography } from 'antd';
 import { kycApi } from '../../api';
-import { kycSchema, type KycFormData } from '../../utils';
+import { useConfirmAction } from '../../components/common';
 import type { KycResponse } from '../../types';
+import { useState } from 'react';
 
 const KYC = () => {
+  const [form] = Form.useForm<{ identificadorDocumento: string }>();
   const [result, setResult] = useState<KycResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, confirmationModal } = useConfirmAction();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<KycFormData>({
-    resolver: zodResolver(kycSchema),
-  });
-
-  const onSubmit = async (data: KycFormData) => {
-    try {
-      setLoading(true);
-      setError(null);
-      setResult(null);
-      const response = await kycApi.consultar(data.identificadorDocumento);
-      setResult(response);
-    } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setError(axiosError.response?.data?.message || 'Error al consultar KYC');
-    } finally {
-      setLoading(false);
-    }
+  const onSubmit = async () => {
+    const values = await form.validateFields();
+    confirm({
+      title: 'Confirmar consulta KYC',
+      description: `Se consultara informacion KYC del documento ${values.identificadorDocumento}.`,
+      detail: 'Esta consulta sensible quedara registrada en auditoria.',
+      confirmLabel: 'Consultar',
+      variant: 'warning',
+      action: async () => {
+        setLoading(true);
+        setError(null);
+        setResult(null);
+        try {
+          const response = await kycApi.consultar(values.identificadorDocumento);
+          setResult(response);
+        } catch (err: unknown) {
+          const axiosError = err as { response?: { data?: { message?: string } } };
+          setError(axiosError.response?.data?.message || 'Error al consultar KYC');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   return (
-    <div className="space-y-gutter">
-      <h1 className="text-secondary font-semibold text-2xl">Consulta KYC</h1>
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <div>
+        <Typography.Title level={2} style={{ marginBottom: 0 }}>Consulta KYC</Typography.Title>
+        <Typography.Text type="secondary">Consulta datos regulatorios y senales de riesgo por documento.</Typography.Text>
+      </div>
 
-      {/* Search Form */}
-      <div className="bg-white rounded-xl border border-surface-container-highest shadow-sm p-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="flex items-end gap-4">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-secondary mb-1">
-              Identificador del Documento
-            </label>
-            <input
-              {...register('identificadorDocumento')}
-              type="text"
-              className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary placeholder-secondary/40 focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
-              placeholder="Ingrese número de documento"
+      <Card>
+        <Form form={form} layout="vertical" style={{ maxWidth: 640 }}>
+          <Form.Item label="Identificador Del Documento" name="identificadorDocumento" rules={[{ required: true, message: 'Ingresa el documento' }]}>
+            <Input.Search
+              enterButton={<Button type="primary" icon={<SearchOutlined />} loading={loading}>Consultar</Button>}
+              placeholder="Ingrese numero de documento"
+              onSearch={onSubmit}
             />
-            {errors.identificadorDocumento && (
-              <p className="mt-1 text-sm text-error">
-                {errors.identificadorDocumento.message}
-              </p>
-            )}
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-2 bg-primary-container text-white rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center font-bold text-sm transition-opacity"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Consultando...
-              </>
-            ) : (
-              <>
-                <Search className="w-4 h-4 mr-2" />
-                Consultar
-              </>
-            )}
-          </button>
-        </form>
-      </div>
+          </Form.Item>
+        </Form>
+      </Card>
 
-      {/* Error */}
-      {error && (
-        <div className="bg-error-container/30 border border-error-container rounded-xl p-4">
-          <div className="flex items-center">
-            <XCircle className="w-5 h-5 text-error mr-2" />
-            <p className="text-error">{error}</p>
-          </div>
-        </div>
-      )}
+      {error && <Alert type="error" showIcon message={error} />}
 
-      {/* Result */}
       {result && (
-        <div className="bg-white rounded-xl border border-surface-container-highest shadow-sm p-6">
-          <h2 className="text-secondary font-semibold text-lg mb-4">Resultado de la Consulta</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-surface-container-low rounded-lg">
-              <p className="text-sm text-secondary/60">Identificador Documento</p>
-              <p className="text-lg font-semibold text-secondary mt-1">{result.identificadorDocumento}</p>
-            </div>
-            <div className="p-4 bg-surface-container-low rounded-lg">
-              <p className="text-sm text-secondary/60">Tipo de Consulta</p>
-              <p className="text-lg font-semibold text-secondary mt-1">{result.tipoConsulta}</p>
-            </div>
-            <div className="p-4 bg-surface-container-low rounded-lg">
-              <p className="text-sm text-secondary/60">Resultado</p>
-              <div className="flex items-center mt-2">
-                {result.resultado ? (
-                  <>
-                    <CheckCircle className="w-5 h-5 text-success mr-2" />
-                    <span className="text-success font-bold">Positivo</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="w-5 h-5 text-critical mr-2" />
-                    <span className="text-critical font-bold">Negativo</span>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="p-4 bg-surface-container-low rounded-lg">
-              <p className="text-sm text-secondary/60">Mensaje</p>
-              <p className="text-lg text-secondary mt-1">{result.mensaje}</p>
-            </div>
-          </div>
-        </div>
+        <Card title="Resultado De La Consulta">
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Result
+              status={result.resultado ? 'warning' : 'success'}
+              title={result.resultado ? 'Coincidencia Encontrada' : 'Sin Coincidencias De Riesgo'}
+              subTitle={result.mensaje || 'Consulta procesada correctamente.'}
+            />
+            <Descriptions
+              bordered
+              column={2}
+              items={[
+                { key: 'documento', label: 'Documento', children: result.identificadorDocumento },
+                { key: 'tipo', label: 'Tipo Consulta', children: result.tipoConsulta },
+                { key: 'resultado', label: 'Resultado', children: <Tag color={result.resultado ? 'red' : 'green'}>{result.resultado ? 'Positivo' : 'Negativo'}</Tag> },
+                { key: 'mensaje', label: 'Mensaje', children: result.mensaje || '-' },
+              ]}
+            />
+          </Space>
+        </Card>
       )}
-
-      {/* Info */}
-      <div className="bg-tertiary/5 border border-tertiary/20 rounded-xl p-4">
-        <div className="flex items-start">
-          <Info className="w-5 h-5 text-tertiary mt-0.5 mr-2" />
-          <p className="text-sm text-secondary">
-            <strong>Nota:</strong> Los datos se consultan en tiempo real desde el backend.
-            No se almacenan localmente.
-          </p>
-        </div>
-      </div>
-    </div>
+      {confirmationModal}
+    </Space>
   );
 };
 

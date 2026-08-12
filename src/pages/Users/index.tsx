@@ -1,82 +1,126 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  Users as UsersIcon,
-  Loader2,
-  Plus,
-  Pencil,
-  UserX,
-  X,
-} from 'lucide-react';
+import { EditOutlined, MailOutlined, PlusOutlined, StopOutlined, TeamOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Form, Input, Modal, Select, Space, Table, Tag, Typography, message } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { licensingApi, usersApi } from '../../api';
-import { formatDate, usuarioSchema, type UsuarioFormData } from '../../utils';
+import { ActionDropdown, useConfirmAction } from '../../components/common';
+import { formatDate, formatCurrency, usuarioSchema, type UsuarioFormData } from '../../utils';
+import { useAuthStore } from '../../store';
 import type { Usuario } from '../../types';
 
+const roleOptions = [
+  { value: 'ADMINISTRADOR', label: 'Administrador' },
+  { value: 'SUPERVISOR', label: 'Supervisor' },
+  { value: 'ANALISTA', label: 'Analista' },
+  { value: 'AUDITOR', label: 'Auditor' },
+];
+
 const Users = () => {
+  const { user } = useAuthStore();
+  const empresaId = user?.empresaId;
   const [users, setUsers] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<Usuario | null>(null);
   const [empresas, setEmpresas] = useState<Record<string, unknown>[]>([]);
+  const [preciosRol, setPreciosRol] = useState<Record<string, { precioAnual: string | number }>>({});
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteCodigo, setInviteCodigo] = useState<string | null>(null);
+  const [inviteForm] = Form.useForm<{ rol: string; empresaId?: string; email?: string }>();
+  const { confirm, confirmationModal } = useConfirmAction();
 
   const {
-    register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<UsuarioFormData>({
     resolver: zodResolver(usuarioSchema),
+    defaultValues: {
+      username: '',
+      nombreCompleto: '',
+      email: '',
+      password: '',
+      rol: 'ANALISTA',
+      empresaId: '',
+    },
   });
 
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const [data, empresasData] = await Promise.all([
+      const [data, empresasData, suscripciones] = await Promise.all([
         usersApi.getAll(),
         licensingApi.empresas(),
+        licensingApi.suscripciones(empresaId ?? null),
       ]);
       setUsers(data);
       setEmpresas(empresasData);
+      const planId = Number((suscripciones[0] as { planId?: unknown } | undefined)?.planId ?? 0);
+      if (planId) {
+        const precios = await licensingApi.preciosRol(planId);
+        setPreciosRol(
+          Object.fromEntries(
+            precios.map((precio) => [
+              String(precio.rol),
+              { precioAnual: precio.precioAnual as string | number },
+            ])
+          )
+        );
+      } else {
+        setPreciosRol({});
+      }
     } catch (err) {
       setError('Error al cargar los usuarios');
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [empresaId]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
   const onSubmit = async (data: UsuarioFormData) => {
-    try {
-      if (editingUser) {
-        await usersApi.update(editingUser.id, data);
-      } else {
-        await usersApi.create(data);
-      }
-      setShowForm(false);
-      setEditingUser(null);
-      reset();
-      fetchUsers();
-    } catch (err) {
-      console.error(err);
-    }
+    confirm({
+      title: editingUser ? 'Confirmar Edición de Usuario' : 'Confirmar Creación de Usuario',
+      description: editingUser ? `Se actualizarán los datos del usuario ${editingUser.email}.` : `Se creará el usuario ${data.email}.`,
+      detail: `Rol: ${data.rol}. Empresa: ${data.empresaId || 'Global'}.`,
+      confirmLabel: editingUser ? 'Guardar cambios' : 'Crear usuario',
+      action: async () => {
+        if (editingUser) await usersApi.update(editingUser.id, data);
+        else await usersApi.create(data);
+        setShowForm(false);
+        setEditingUser(null);
+        reset();
+        fetchUsers();
+      },
+    });
   };
 
-  const handleDeactivate = async (id: number) => {
-    if (window.confirm('¿Está seguro de desactivar este usuario?')) {
-      try {
-        await usersApi.deactivate(id);
+  const handleDeactivate = async (user: Usuario) => {
+    confirm({
+      title: 'Confirmar Desactivación',
+      description: `Se desactivará el usuario ${user.email}.`,
+      detail: 'El usuario no podrá iniciar sesión mientras permanezca inactivo.',
+      confirmLabel: 'Desactivar',
+      variant: 'critical',
+      action: async () => {
+        await usersApi.deactivate(user.id);
         fetchUsers();
-      } catch (err) {
-        console.error(err);
-      }
-    }
+      },
+    });
+  };
+
+  const openCreate = () => {
+    setEditingUser(null);
+    reset({ username: '', nombreCompleto: '', email: '', password: '', rol: 'ANALISTA', empresaId: '' });
+    setShowForm(true);
   };
 
   const handleEdit = (user: Usuario) => {
@@ -86,10 +130,57 @@ const Users = () => {
       username: user.username,
       nombreCompleto: user.nombreCompleto || user.nombre || '',
       email: user.email,
+      password: '',
       rol: user.rol,
       empresaId: user.empresaId,
     });
   };
+
+  const handleInvite = async (values: { rol: string; empresaId?: string; email?: string }) => {
+    if (!values.empresaId) {
+      message.warning('Selecciona una empresa para la invitacion.');
+      return;
+    }
+    try {
+      const respuesta = await usersApi.crearInvitacion({
+        rol: values.rol,
+        empresaId: values.empresaId,
+        email: values.email || undefined,
+      });
+      setInviteCodigo(String((respuesta as { codigo?: unknown }).codigo ?? ''));
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'No se pudo generar la invitacion');
+    }
+  };
+
+  const closeInvite = () => {
+    setInviteOpen(false);
+    setInviteCodigo(null);
+    inviteForm.resetFields();
+  };
+
+  const pricingColumns: ColumnsType<{ rol: string; precioAnual: string | number }> = [
+    {
+      title: 'Rol',
+      dataIndex: 'rol',
+      key: 'rol',
+      render: (rol: string) => (
+        <Tag color={rol === 'ADMINISTRADOR' ? 'gold' : 'blue'}>{rol}</Tag>
+      ),
+    },
+    {
+      title: 'Precio Anual Adicional (USD)',
+      dataIndex: 'precioAnual',
+      key: 'precioAnual',
+      align: 'right',
+      render: (precio) => formatCurrency(Number(precio)),
+    },
+  ];
+
+  const pricingData = Object.entries(preciosRol).map(([rol, precio]) => ({
+    rol,
+    precioAnual: precio.precioAnual,
+  }));
 
   const handleCloseForm = () => {
     setShowForm(false);
@@ -97,260 +188,156 @@ const Users = () => {
     reset();
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-container" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <UsersIcon className="w-12 h-12 text-critical mx-auto mb-4" />
-        <p className="text-critical">{error}</p>
-        <button
-          onClick={fetchUsers}
-          className="mt-4 px-4 py-2 bg-primary-container text-white rounded-lg hover:opacity-90 transition-opacity"
-        >
-          Reintentar
-        </button>
-      </div>
-    );
-  }
+  const columns: ColumnsType<Usuario> = [
+    { title: 'Nombre', render: (_, user) => <Typography.Text strong>{user.nombreCompleto || user.nombre}</Typography.Text> },
+    { title: 'Email', dataIndex: 'email' },
+    { title: 'Rol', dataIndex: 'rol', render: (value) => <Tag color={value === 'ADMIN_GENERAL' ? 'orange' : 'blue'}>{value}</Tag> },
+    { title: 'Empresa', render: (_, user) => user.empresaNombre || 'Global' },
+    { title: 'Estado', dataIndex: 'activo', render: (active) => <Tag color={active ? 'green' : 'red'}>{active ? 'Activo' : 'Inactivo'}</Tag> },
+    { title: 'Fecha', dataIndex: 'fechaCreacion', render: (value) => formatDate(value) },
+    {
+      title: 'Acciones',
+      align: 'right',
+      render: (_, user) => (
+        <ActionDropdown
+          items={[
+            { key: 'edit', label: 'Editar', icon: <EditOutlined />, onClick: () => handleEdit(user) },
+            {
+              key: 'deactivate',
+              label: 'Desactivar',
+              icon: <StopOutlined />,
+              danger: true,
+              disabled: !user.activo,
+              onClick: () => handleDeactivate(user),
+            },
+          ]}
+        />
+      ),
+    },
+  ];
 
   return (
-    <div className="space-y-gutter">
-      <div className="flex items-center justify-between">
-        <h1 className="text-secondary font-semibold text-2xl">Gestión de Usuarios</h1>
-        <button
-          onClick={() => {
-            setEditingUser(null);
-            setShowForm(true);
-            reset();
-          }}
-          className="flex items-center px-4 py-2 bg-primary-container text-white rounded-lg hover:opacity-90 transition-opacity font-bold text-sm"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Usuario
-        </button>
-      </div>
-
-      {/* Users Table */}
-      <section className="bg-white rounded-xl border border-surface-container-highest shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-surface-container-low/30 border-b border-surface-container-highest">
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Nombre</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Email</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Rol</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Empresa</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Estado</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60">Fecha</th>
-                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-secondary/60 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-container-highest">
-              {users.map((user) => (
-                <tr key={user.id} className="row-hover transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-secondary">
-                    {user.nombreCompleto || user.nombre}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary">
-                    {user.email}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase ${
-                      user.rol === 'ADMIN_GENERAL'
-                        ? 'bg-primary-container/10 text-primary-container'
-                        : 'bg-tertiary/10 text-tertiary'
-                    }`}>
-                      {user.rol}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary">
-                    {user.empresaNombre || 'Global'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase ${
-                      user.activo
-                        ? 'bg-success/10 text-success'
-                        : 'bg-error/10 text-error'
-                    }`}>
-                      {user.activo ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary">
-                    {formatDate(user.fechaCreacion)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={() => handleEdit(user)}
-                        className="p-2 text-secondary hover:bg-secondary/5 rounded-full transition-colors"
-                        title="Editar"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      {user.activo && (
-                        <button
-                          onClick={() => handleDeactivate(user.id)}
-                          className="p-2 text-critical hover:bg-critical/10 rounded-full transition-colors"
-                          title="Desactivar"
-                        >
-                          <UserX className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+        <div>
+          <Typography.Title level={2} style={{ margin: 0 }}>Gestión de Usuarios</Typography.Title>
+          <Typography.Text type="secondary">Administra usuarios, roles y empresa asociada.</Typography.Text>
         </div>
-      </section>
+        <Space>
+          <Button icon={<MailOutlined />} onClick={() => setInviteOpen(true)}>
+            Generar Invitación
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+            Nuevo Usuario
+          </Button>
+        </Space>
+      </Space>
 
-      {/* Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 border border-surface-container-highest shadow-lg">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-secondary">
-                {editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
-              </h2>
-              <button
-                onClick={handleCloseForm}
-                className="text-secondary/40 hover:text-secondary transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {error && <Alert type="error" showIcon message={error} action={<Button onClick={fetchUsers}>Reintentar</Button>} />}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-secondary mb-1">
-                  Username *
-                </label>
-                <input
-                  {...register('username')}
-                  className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary placeholder-secondary/40 focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
-                  placeholder="Nombre de usuario"
+      <Card>
+        <Table rowKey="id" loading={loading} columns={columns} dataSource={users} pagination={{ pageSize: 10 }} />
+      </Card>
+
+      <Modal
+        open={showForm}
+        onCancel={handleCloseForm}
+        title={<Space><TeamOutlined />{editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}</Space>}
+        footer={null}
+        centered
+        width={560}
+      >
+        <Form layout="vertical" onFinish={handleSubmit(onSubmit)}>
+          <Controller name="username" control={control} render={({ field }) => <Form.Item label="Username" validateStatus={errors.username ? 'error' : undefined} help={errors.username?.message}><Input {...field} placeholder="Nombre de usuario" /></Form.Item>} />
+          <Controller name="nombreCompleto" control={control} render={({ field }) => <Form.Item label="Nombre Completo" validateStatus={errors.nombreCompleto ? 'error' : undefined} help={errors.nombreCompleto?.message}><Input {...field} placeholder="Nombre completo del usuario" /></Form.Item>} />
+          <Controller name="email" control={control} render={({ field }) => <Form.Item label="Email" validateStatus={errors.email ? 'error' : undefined} help={errors.email?.message}><Input {...field} type="email" placeholder="correo@ejemplo.com" /></Form.Item>} />
+          <Controller name="password" control={control} render={({ field }) => <Form.Item label={editingUser ? 'Nueva Contraseña' : 'Contraseña'} validateStatus={errors.password ? 'error' : undefined} help={errors.password?.message || (editingUser ? 'Dejar vacío para mantener la actual.' : undefined)}><Input.Password {...field} placeholder="Contraseña" /></Form.Item>} />
+          <Controller name="rol" control={control} render={({ field }) => (
+            <Form.Item
+              label="Rol"
+              validateStatus={errors.rol ? 'error' : undefined}
+              help={errors.rol?.message}
+              extra={field.value && preciosRol[field.value] && !editingUser ? `Precio anual adicional para este rol: ${formatCurrency(Number(preciosRol[field.value].precioAnual))}` : undefined}
+            >
+              <Select {...field} options={roleOptions} />
+            </Form.Item>
+          )} />
+          <Controller
+            name="empresaId"
+            control={control}
+            render={({ field }) => (
+              <Form.Item label="Empresa" extra="Admin General puede quedar global; los demas roles deben asignarse a una empresa.">
+                <Select
+                  {...field}
+                  allowClear
+                  placeholder="Global / Sin empresa"
+                  options={empresas.map((empresa) => ({ value: String(empresa.id), label: `${String(empresa.codigo ?? empresa.id)} - ${String(empresa.nombre ?? '')}` }))}
                 />
-                {errors.username && (
-                  <p className="mt-1 text-sm text-error">{errors.username.message}</p>
-                )}
-              </div>
+              </Form.Item>
+            )}
+          />
+          <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+            <Button onClick={handleCloseForm}>Cancelar</Button>
+            <Button type="primary" htmlType="submit" loading={isSubmitting}>{editingUser ? 'Guardar Cambios' : 'Crear Usuario'}</Button>
+          </Space>
+        </Form>
+      </Modal>
 
-              <div>
-                <label className="block text-sm font-medium text-secondary mb-1">
-                  Nombre Completo *
-                </label>
-                <input
-                  {...register('nombreCompleto')}
-                  className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary placeholder-secondary/40 focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
-                  placeholder="Nombre completo del usuario"
-                />
-                {errors.nombreCompleto && (
-                  <p className="mt-1 text-sm text-error">{errors.nombreCompleto.message}</p>
-                )}
-              </div>
+      <Card title={<Space><MailOutlined />Precios De Usuarios Adicionales (USD / año)</Space>}>
+        <Table
+          rowKey="rol"
+          columns={pricingColumns}
+          dataSource={pricingData}
+          pagination={false}
+          size="small"
+          locale={{ emptyText: 'No hay precios configurados para el plan activo.' }}
+        />
+      </Card>
 
-              <div>
-                <label className="block text-sm font-medium text-secondary mb-1">
-                  Email *
-                </label>
-                <input
-                  {...register('email')}
-                  type="email"
-                  className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary placeholder-secondary/40 focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
-                  placeholder="correo@ejemplo.com"
-                />
-                {errors.email && (
-                  <p className="mt-1 text-sm text-error">{errors.email.message}</p>
-                )}
-              </div>
+      <Modal
+        open={inviteOpen}
+        onCancel={closeInvite}
+        title={<Space><MailOutlined />Generar Invitación</Space>}
+        footer={inviteCodigo ? null : [
+          <Button key="cancel" onClick={closeInvite}>Cancelar</Button>,
+          <Button key="ok" type="primary" onClick={() => inviteForm.submit()}>Generar Invitación</Button>,
+        ]}
+        centered
+        width={520}
+      >
+        {inviteCodigo ? (
+          <Alert
+            type="success"
+            showIcon
+            message="Invitación generada"
+            description={
+              <Space direction="vertical">
+                <Typography.Text>Comparte este código con el usuario invitado (se usa en el registro con invitación):</Typography.Text>
+                <Typography.Text code copyable style={{ fontSize: 16 }}>{inviteCodigo}</Typography.Text>
+                <Typography.Text type="secondary">Si cargaste un email, también se envía la invitación por correo.</Typography.Text>
+              </Space>
+            }
+          />
+        ) : (
+          <Form form={inviteForm} layout="vertical" onFinish={handleInvite} requiredMark={false}>
+            <Form.Item label="Rol" name="rol" rules={[{ required: true, message: 'Selecciona un rol' }]}>
+              <Select options={roleOptions} placeholder="Rol del invitado" />
+            </Form.Item>
+            <Form.Item label="Empresa" name="empresaId" rules={[{ required: true, message: 'Selecciona una empresa' }]}>
+              <Select
+                placeholder="Empresa destino"
+                options={empresas.map((empresa) => ({ value: String(empresa.id), label: `${String(empresa.codigo ?? empresa.id)} - ${String(empresa.nombre ?? '')}` }))}
+              />
+            </Form.Item>
+            <Form.Item label="Email (opcional)" name="email" rules={[{ type: 'email', message: 'Email invalido' }]}>
+              <Input placeholder="correo@ejemplo.com" />
+            </Form.Item>
+          </Form>
+        )}
+      </Modal>
 
-              <div>
-                <label className="block text-sm font-medium text-secondary mb-1">
-                  {editingUser ? 'Nueva Contraseña (dejar vacío para mantener)' : 'Contraseña *'}
-                </label>
-                <input
-                  {...register('password')}
-                  type="password"
-                  className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary placeholder-secondary/40 focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
-                  placeholder="••••••••"
-                />
-                {errors.password && (
-                  <p className="mt-1 text-sm text-error">{errors.password.message}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-secondary mb-1">
-                  Rol *
-                </label>
-                <select
-                  {...register('rol')}
-                  className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
-                >
-                  <option value="ANALISTA">Analista</option>
-                  <option value="GERENTE_SUPERVISOR">Gerente Supervisor</option>
-                  <option value="ADMIN_EMPRESA">Admin Empresa</option>
-                  <option value="ADMIN_GENERAL">Admin General</option>
-                  <option value="AUDITOR">Auditor</option>
-                </select>
-                {errors.rol && (
-                  <p className="mt-1 text-sm text-error">{errors.rol.message}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-secondary mb-1">
-                  Empresa
-                </label>
-                <select
-                  {...register('empresaId')}
-                  className="w-full px-3 py-2 bg-surface-container-low border-none rounded-lg text-secondary focus:ring-2 focus:ring-primary-container/20 focus:outline-none"
-                >
-                  <option value="">Global / Sin empresa</option>
-                  {empresas.map((empresa) => (
-                    <option key={String(empresa.id)} value={String(empresa.id)}>
-                      {String(empresa.codigo ?? empresa.id)} - {String(empresa.nombre ?? '')}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-xs text-secondary/50">Admin General puede quedar global; los demas roles deben asignarse a una empresa.</p>
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={handleCloseForm}
-                  className="px-4 py-2 border border-surface-container-highest rounded-lg text-secondary hover:bg-surface-container-low transition-colors text-sm font-bold"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-primary-container text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity font-bold text-sm"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : editingUser ? (
-                    'Guardar Cambios'
-                  ) : (
-                    'Crear Usuario'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+      {confirmationModal}
+    </Space>
   );
 };
 

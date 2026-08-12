@@ -1,4 +1,3 @@
-export { cn } from './cn';
 export { formatDate, formatDateShort, formatTime } from './date';
 export { formatCurrency, formatNumber, formatPercentage } from './format';
 export {

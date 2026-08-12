@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Permission, Rol } from '../types';
+import type { Permission, Rol, UUID } from '../types';
 
 interface User {
+  usuarioId?: UUID;
   email: string;
   rol: Rol;
-  empresaId?: number | null;
+  empresaId?: UUID | null;
   rolId?: number | null;
   permisos?: Permission[];
 }

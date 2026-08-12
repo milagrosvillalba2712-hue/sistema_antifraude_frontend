@@ -7,13 +7,13 @@ interface RegulaIconProps {
 
 export const RegulaIcon = ({ className = '', size }: RegulaIconProps) => (
   <div
-    className={`shrink-0 overflow-hidden flex items-center justify-center ${className}`}
-    style={size ? { width: size, height: size } : undefined}
+    className={className}
+    style={{ width: size || '100%', height: size || '100%', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
   >
     <img
       src={logoReal}
       alt="Regula Logo"
-      className="w-full h-full object-contain"
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
       draggable={false}
     />
   </div>

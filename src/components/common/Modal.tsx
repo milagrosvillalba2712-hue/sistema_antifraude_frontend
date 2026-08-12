@@ -1,70 +1,46 @@
-import { useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
-import { cn } from '../../utils';
+import { Modal as AntModal } from 'antd';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '5xl' | '6xl' | 'default';
   className?: string;
+  bodyClassName?: string;
 }
 
-const sizeClasses = {
-  sm: 'max-w-sm',
-  md: 'max-w-md',
-  lg: 'max-w-lg',
-  xl: 'max-w-xl',
+const widthBySize: Record<NonNullable<ModalProps['size']>, number | string> = {
+  sm: 420,
+  md: 520,
+  lg: 640,
+  xl: 760,
+  '2xl': 860,
+  '5xl': 1080,
+  '6xl': 1180,
+  default: 1080,
 };
 
-export default function Modal({ isOpen, onClose, title, children, size = 'md', className }: ModalProps) {
-  const overlayRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = '';
-    };
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
+export default function Modal({ isOpen, onClose, title, children, size = 'default', className, bodyClassName }: ModalProps) {
   return (
-    <div
-      ref={overlayRef}
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      onClick={(e) => {
-        if (e.target === overlayRef.current) onClose();
+    <AntModal
+      open={isOpen}
+      onCancel={onClose}
+      title={title || ' '}
+      footer={null}
+      width={widthBySize[size]}
+      centered
+      destroyOnHidden
+      className={className}
+      styles={{
+        body: {
+          maxHeight: 'calc(92vh - 108px)',
+          overflowY: 'auto',
+          padding: 0,
+        },
       }}
     >
-      <div
-        className={cn(
-          'bg-white rounded-xl border border-surface-container-highest shadow-lg w-full mx-4',
-          sizeClasses[size],
-          className
-        )}
-      >
-        {title && (
-          <div className="flex items-center justify-between px-6 py-4 border-b border-surface-container-highest">
-            <h2 className="text-lg font-semibold text-secondary">{title}</h2>
-            <button
-              onClick={onClose}
-              className="p-1 text-secondary/40 hover:text-secondary rounded-full hover:bg-surface-container-low transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        )}
-        <div className="p-6">{children}</div>
-      </div>
-    </div>
+      <div className={bodyClassName} style={{ padding: 24 }}>{children}</div>
+    </AntModal>
   );
 }

@@ -26,7 +26,7 @@ export const usuarioSchema = z.object({
   rol: z.enum(['ADMIN_GENERAL', 'ADMIN_EMPRESA', 'GERENTE_SUPERVISOR', 'ANALISTA', 'AUDITOR'], {
     message: 'El rol es requerido',
   }),
-  empresaId: z.union([z.string(), z.number(), z.null()]).optional(),
+  empresaId: z.union([z.string(), z.null()]).optional(),
 });
 
 export const kycSchema = z.object({

@@ -32,7 +32,7 @@ export const useAlertStore = create<AlertState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const data = await alertsApi.getAll();
-      set({ alerts: data, loading: false });
+      set({ alerts: data.content, loading: false });
     } catch (err) {
       set({ error: 'Error al cargar las alertas', loading: false });
       console.error(err);

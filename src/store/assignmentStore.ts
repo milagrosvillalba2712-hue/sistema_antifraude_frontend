@@ -7,7 +7,7 @@ interface AssignmentState {
   loading: boolean;
   error: string | null;
   fetchWorkload: () => Promise<void>;
-  rebalance: (usuarioId?: number) => Promise<void>;
+  rebalance: (usuarioId?: string) => Promise<void>;
 }
 
 export const useAssignmentStore = create<AssignmentState>((set) => ({

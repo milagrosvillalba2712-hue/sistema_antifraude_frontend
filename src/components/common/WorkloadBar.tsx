@@ -1,4 +1,4 @@
-import { cn } from '../../utils';
+import { Progress, Space, Typography } from 'antd';
 
 interface WorkloadBarProps {
   current: number;
@@ -9,22 +9,12 @@ interface WorkloadBarProps {
 
 export default function WorkloadBar({ current, max = 20, showLabel = true, className }: WorkloadBarProps) {
   const percentage = Math.min((current / max) * 100, 100);
-  const color =
-    percentage > 80 ? 'bg-error' : percentage > 50 ? 'bg-warning' : 'bg-success';
+  const color = percentage > 80 ? '#ba1a1a' : percentage > 50 ? '#f2994a' : '#2ecc71';
 
   return (
-    <div className={cn('flex items-center gap-2', className)}>
-      <div className="h-2 flex-1 bg-surface-container rounded-full overflow-hidden">
-        <div
-          className={cn('h-full rounded-full transition-all duration-300', color)}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-      {showLabel && (
-        <span className="text-xs text-secondary/60 font-medium min-w-[2rem] text-right">
-          {current}
-        </span>
-      )}
-    </div>
+    <Space className={className} style={{ width: '100%' }}>
+      <Progress percent={percentage} showInfo={false} strokeColor={color} size="small" style={{ width: 120 }} />
+      {showLabel && <Typography.Text type="secondary">{current}</Typography.Text>}
+    </Space>
   );
 }

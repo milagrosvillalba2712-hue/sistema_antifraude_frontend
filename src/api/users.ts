@@ -7,7 +7,7 @@ export const usersApi = {
     return response.data;
   },
 
-  getById: async (id: number): Promise<Usuario> => {
+  getById: async (id: string): Promise<Usuario> => {
     const response = await api.get<Usuario>(`/admin/users/${id}`);
     return response.data;
   },
@@ -17,13 +17,18 @@ export const usersApi = {
     return response.data;
   },
 
-  update: async (id: number, data: UsuarioRequest): Promise<Usuario> => {
+  update: async (id: string, data: UsuarioRequest): Promise<Usuario> => {
     const response = await api.put<Usuario>(`/admin/users/${id}`, toApiPayload(data));
     return response.data;
   },
 
-  deactivate: async (id: number): Promise<void> => {
+  deactivate: async (id: string): Promise<void> => {
     await api.delete(`/admin/users/${id}`);
+  },
+
+  crearInvitacion: async (payload: { rol: string; empresaId: string; email?: string }): Promise<Record<string, unknown>> => {
+    const response = await api.post('/admin/invitaciones', payload);
+    return response.data;
   },
 };
 
@@ -34,5 +39,5 @@ const toApiPayload = (data: UsuarioRequest) => ({
   rol: data.rol,
   empresaId: data.rol === 'ADMIN_GENERAL' || data.empresaId === '' || data.empresaId == null
     ? null
-    : Number(data.empresaId),
+    : data.empresaId,
 });

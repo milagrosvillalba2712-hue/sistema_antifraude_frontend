@@ -5,6 +5,8 @@ export type Rol =
   | 'ADMIN_EMPRESA'
   | 'GERENTE_SUPERVISOR';
 
+export type UUID = string;
+
 export type Permission =
   | 'EMPRESAS_VER' | 'EMPRESAS_EDITAR'
   | 'LICENCIAS_VER' | 'LICENCIAS_GESTIONAR'
@@ -12,12 +14,12 @@ export type Permission =
   | 'USUARIOS_VER' | 'USUARIOS_CREAR' | 'USUARIOS_EDITAR'
   | 'REGLAS_VER' | 'REGLAS_CREAR' | 'REGLAS_EDITAR' | 'REGLAS_ACTIVAR'
   | 'CATALOGOS_VER' | 'CATALOGOS_EDITAR'
-  | 'ALERTAS_VER' | 'ALERTAS_ASIGNAR' | 'ALERTAS_RESOLVER'
+  | 'ALERTAS_VER' | 'ALERTAS_ASIGNAR' | 'ALERTAS_RESOLVER' | 'ALERTAS_APROBAR'
   | 'CASOS_VER' | 'CASOS_GESTIONAR' | 'CASOS_APROBAR'
   | 'REPORTES_VER' | 'REPORTES_GENERAR'
   | 'AUDITORIA_VER';
 
-export type EstadoAlerta = 'NUEVA' | 'ASIGNADA' | 'EN_REVISION' | 'CERRADA';
+export type EstadoAlerta = 'NUEVA' | 'ASIGNADA' | 'EN_REVISION' | 'PENDIENTE_APROBACION' | 'REEVALUACION' | 'CERRADA';
 
 export type PrioridadAlerta = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA';
 
@@ -45,20 +47,21 @@ export interface LoginRequest {
 export interface LoginResponse {
   token: string;
   tipo: string;
+  usuarioId: UUID;
   email: string;
   rol: Rol;
-  empresaId: number | null;
+  empresaId: UUID | null;
   rolId: number | null;
   permisos: Permission[];
 }
 
 export interface Usuario {
-  id: number;
+  id: UUID;
   username: string;
   nombreCompleto: string;
   email: string;
   rol: Rol;
-  empresaId: number | null;
+  empresaId: UUID | null;
   empresaNombre?: string | null;
   activo: boolean;
   intentosFallidos: number;
@@ -73,7 +76,7 @@ export interface UsuarioRequest {
   email: string;
   password?: string;
   rol: Rol;
-  empresaId?: number | string | null;
+  empresaId?: UUID | null;
 }
 
 export interface Pais {
@@ -221,18 +224,29 @@ export interface Alerta {
   transaccionId: number;
   reglaId: number;
   reglaNombre?: string;
+  escenarioId?: number | null;
+  escenarioNombre?: string | null;
+  clienteDocumento?: string | null;
+  clienteNombre?: string | null;
+  monto?: number | null;
+  moneda?: string | null;
+  canal?: string | null;
+  paisOrigen?: string | null;
+  fechaTransaccion?: string | null;
+  nivelRiesgo?: string | null;
+  severidad?: SeveridadRegla | string | null;
   prioridad: PrioridadAlerta;
   score: number;
   estado: EstadoAlerta;
   observacion: string | null;
-  asignadoA: number | null;
+  asignadoA: UUID | null;
   asignadoNombre?: string;
   fechaGeneracion: string;
   fechaResolucion: string | null;
 }
 
 export interface AnalistaDisponible {
-  usuarioId: number;
+  usuarioId: UUID;
   nombre: string;
   email: string;
   estado: string;
@@ -257,20 +271,163 @@ export interface ResolucionAlertaRequest {
 export interface ResolucionAlerta extends ResolucionAlertaRequest {
   id: number;
   alertaId: number;
-  usuarioId: number | null;
+  usuarioId: UUID | null;
   usuarioNombre: string | null;
   fechaResolucion: string;
 }
 
+export interface FilterOption {
+  value: string;
+  label: string;
+}
+
+export interface AlertaFiltros {
+  severidades: FilterOption[];
+  estados: FilterOption[];
+  escenarios: FilterOption[];
+  analistas: FilterOption[];
+  rangosFecha: FilterOption[];
+  ordenes: FilterOption[];
+  tamanosPagina: number[];
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+}
+
+export interface TransaccionAlerta {
+  id: number;
+  codigo: string;
+  transactionUuid: string | null;
+  identificadorDocumento: string | null;
+  cuentaOrigen: string | null;
+  cuentaDestino: string | null;
+  monto: number | null;
+  moneda: string | null;
+  canal: string | null;
+  tipoTransaccion: string | null;
+  ipOrigen: string | null;
+  paisOrigen: string | null;
+  fechaTransaccion: string | null;
+  scoreRiesgo: number | null;
+  nivelRiesgo: string | null;
+  estadoEvaluacion: string | null;
+  remitente?: Record<string, unknown>;
+  beneficiario?: Record<string, unknown>;
+  operacion?: Record<string, unknown>;
+  controlSeguimiento?: Record<string, unknown>;
+  internacional?: Record<string, unknown>;
+}
+
+export interface ClienteAlerta {
+  documento: string | null;
+  personaRemitente: string | null;
+  personaBeneficiario: string | null;
+  pep: string | null;
+  observado: string | null;
+  listas: string | null;
+  fuente?: string | null;
+  personal?: Record<string, unknown>;
+  laboral?: Record<string, unknown>;
+  academico?: Record<string, unknown>;
+  familiar?: Record<string, unknown>;
+  judicialRegulatorio?: Record<string, unknown>;
+}
+
+export interface ReglaAlerta {
+  id: number | null;
+  codigo: string | null;
+  nombre: string | null;
+  descripcion: string | null;
+  severidad: string | null;
+  prioridad: number | null;
+  estado: string | null;
+  condicion: string | null;
+  condicionesJson: string | null;
+  accionesJson: string | null;
+  scoreBase: number | null;
+  escenarioId: number | null;
+  escenarioNombre: string | null;
+}
+
+export interface ServicioExternoAlerta {
+  servicio: string;
+  estado: string;
+  mensaje: string;
+}
+
+export interface EvidenciaAlerta {
+  id: number | null;
+  nombre: string | null;
+  descripcion: string | null;
+  tipo: string | null;
+  extension: string | null;
+  mimeType: string | null;
+  tamanoBytes: number | null;
+  estado: string | null;
+  referenciaArchivo: string | null;
+  cargadoPor: string | null;
+  fechaCarga: string | null;
+}
+
+export interface EvidenciaAlertaRequest {
+  nombre: string;
+  descripcion: string;
+  tipo: string;
+  extension: string;
+  mimeType?: string;
+  tamanoBytes?: number;
+  referenciaArchivo?: string;
+  estado?: string;
+}
+
+export interface HallazgoAlerta {
+  id: number | null;
+  tipo: string;
+  titulo: string;
+  descripcion: string | null;
+  severidad: string | null;
+  score: number | null;
+  fuente: string | null;
+  detalleJson: string | null;
+  regla: ReglaAlerta | null;
+}
+
+export interface AprobacionSupervisor {
+  id: number;
+  alertaId: number;
+  resolucionId: number | null;
+  supervisorId: UUID | null;
+  supervisorNombre: string | null;
+  estado: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | string;
+  observacion: string | null;
+  motivoRechazo: string | null;
+  faltantes: string | null;
+  fechaSolicitud: string;
+  fechaAprobacion: string | null;
+}
+
 export interface AlertaDetalle {
   alerta: Alerta;
-  transaccion: Record<string, unknown>;
-  regla: Record<string, unknown>;
-  cliente: Record<string, unknown>;
-  historialTransaccional: Record<string, unknown>[];
-  serviciosExternos: Record<string, unknown>[];
+  transaccion: TransaccionAlerta | null;
+  regla: ReglaAlerta | null;
+  reglasDisparadas: ReglaAlerta[];
+  hallazgosRegulatorios: HallazgoAlerta[];
+  cliente: ClienteAlerta | null;
+  historialTransaccional: TransaccionAlerta[];
+  serviciosExternos: ServicioExternoAlerta[];
   timeline: TimelineEvent[];
+  accionesTimeline: TimelineEvent[];
+  evidencias: EvidenciaAlerta[];
   resolucion: ResolucionAlerta | null;
+  aprobacion: AprobacionSupervisor | null;
+  accionesDisponibles: string[];
 }
 
 export interface RuleFactDefinition {
@@ -338,7 +495,7 @@ export interface Caso {
   estado: EstadoCaso;
   prioridad: PrioridadAlerta;
   score: number | null;
-  usuarioAnalistaId: number | null;
+  usuarioAnalistaId: UUID | null;
   usuarioAnalistaNombre?: string;
   fechaApertura: string;
   fechaCierre: string | null;
@@ -406,7 +563,7 @@ export interface SimuladorResponse {
 
 export interface PerfilUsuario {
   id: number;
-  usuarioId: number;
+  usuarioId: UUID;
   fotoUrl: string | null;
   telefono: string | null;
   biografia: string | null;
@@ -420,7 +577,7 @@ export interface PerfilUsuario {
 
 export interface Disponibilidad {
   id: number;
-  usuarioId: number;
+  usuarioId: UUID;
   estado: EstadoUsuario;
   emoji: string | null;
   mensajePersonalizado: string | null;
@@ -437,9 +594,9 @@ export interface Disponibilidad {
 export interface HistorialAsignacion {
   id: number;
   alertaId: number;
-  usuarioOrigenId: number | null;
+  usuarioOrigenId: UUID | null;
   usuarioOrigenNombre: string | null;
-  usuarioDestinoId: number;
+  usuarioDestinoId: UUID;
   usuarioDestinoNombre: string;
   fecha: string;
   motivo: string | null;
@@ -455,7 +612,7 @@ export interface TimelineEvent {
 }
 
 export interface WorkloadData {
-  usuarioId: number;
+  usuarioId: UUID;
   nombre: string;
   alertasAsignadas: number;
   alertasPendientes: number;
@@ -474,7 +631,7 @@ export interface ReglaHistorialVersion {
   version: number;
   snapshotJson: string;
   motivoCambio: string;
-  usuarioId: number;
+  usuarioId: UUID;
   usuarioNombre?: string;
   fechaHora: string;
 }

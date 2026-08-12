@@ -73,7 +73,7 @@ type RuleDraft = {
 const fallbackFacts: RuleFactDefinition[] = [
   { fact: 'monto', etiqueta: 'Monto de la transaccion', tipo: 'NUMERICO', catalogo: null, operadores: ['>', '>=', '<', '<=', 'between'] },
   { fact: 'moneda', etiqueta: 'Moneda', tipo: 'CATALOGO', catalogo: 'moneda', operadores: ['==', '!=', 'in'] },
-  { fact: 'canal', etiqueta: 'Canal utilizado', tipo: 'CATALOGO', catalogo: 'canal', operadores: ['==', '!=', 'in'] },
+  { fact: 'canal', etiqueta: 'Canal utilizado', tipo: 'CATALOGO', catalogo: 'canal_transaccion', operadores: ['==', '!=', 'in'] },
   { fact: 'paisOrigen', etiqueta: 'País de origen', tipo: 'CATALOGO', catalogo: 'pais', operadores: ['==', '!=', 'in'] },
   { fact: 'paisDestino', etiqueta: 'País de destino', tipo: 'CATALOGO', catalogo: 'pais', operadores: ['==', '!=', 'in'] },
   { fact: 'pep', etiqueta: 'Cliente PEP', tipo: 'BOOLEANO', catalogo: null, operadores: ['exists', '=='] },

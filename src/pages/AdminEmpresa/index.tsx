@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import {
   ApiOutlined,
   CloudSyncOutlined,
-  DatabaseOutlined,
   FieldTimeOutlined,
   InfoCircleOutlined,
   ReloadOutlined,
@@ -22,6 +21,8 @@ import { ConsumoVsPlan, EventosLicencia, INSTALACION_STORAGE_KEY, InstalacionLic
 
 type AdminEmpresaSection = 'dashboard' | 'licencia-pagos' | 'consumo' | 'apis' | 'configuracion' | 'auditoria';
 type TimeRangeKey = '5m' | '10m' | '30m' | '1h' | '3h';
+type ApiScopeKey = 'TODAS' | 'PROPIAS' | 'EXTERNAS';
+type DrilldownKey = 'ERRORES' | 'LATENCIA' | 'TRAFICO' | 'CONSUMO' | 'LICENCIA';
 
 const sectionMeta: Record<AdminEmpresaSection, { title: string; description: string }> = {
   dashboard: {
@@ -234,25 +235,81 @@ const DashboardAdmin = ({ loading, licencia, plan, summary, apiResumen, errores,
   const uptime = asRecord(systemOverview.systemUptime);
   const trafficTrend = arrayValue(systemOverview.trafficTrend24h);
   const errorTelemetry = arrayValue(systemOverview.errorTelemetry);
+  const eventosRecientes = useMemo(() => arrayValue(errores.eventosRecientes), [errores]);
+  const statusCodes = useMemo(() => Array.from(new Set(eventosRecientes
+    .map((row) => row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp)
+    .filter((value) => value !== null && value !== undefined)
+    .map(String))).sort((a, b) => Number(a) - Number(b)), [eventosRecientes]);
   const [trafficRange, setTrafficRange] = useState<TimeRangeKey>('1h');
   const [errorRange, setErrorRange] = useState<TimeRangeKey>('1h');
+  const [globalRange, setGlobalRange] = useState<TimeRangeKey>('1h');
+  const [apiScope, setApiScope] = useState<ApiScopeKey>('TODAS');
+  const [statusFilter, setStatusFilter] = useState('TODOS');
+  const [drilldown, setDrilldown] = useState<DrilldownKey>('ERRORES');
   const filteredTrafficTrend = useMemo(() => filterRowsByTimeRange(trafficTrend, 'bucket', trafficRange), [trafficRange, trafficTrend]);
   const filteredErrorTelemetry = useMemo(() => filterRowsByTimeRange(errorTelemetry, 'fecha', errorRange), [errorRange, errorTelemetry]);
+  const filteredEvents = useMemo(() => eventosRecientes
+    .filter((row) => isWithinTimeRange(row.fecha, globalRange))
+    .filter((row) => statusFilter === 'TODOS' || String(row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp ?? '') === statusFilter)
+    .filter((row) => {
+      if (apiScope === 'TODAS') return true;
+      const external = isExternalEvent(row);
+      return apiScope === 'EXTERNAS' ? external : !external;
+    }), [apiScope, eventosRecientes, globalRange, statusFilter]);
+  const totalTraffic = filteredTrafficTrend.reduce((sum, row) => sum + numberValue(row.api_internas) + numberValue(row.api_externas), 0);
+  const totalErrors = filteredEvents.filter((row) => numberValue(row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp) >= 400).length;
+  const errorRate = totalTraffic ? Math.round((totalErrors / totalTraffic) * 1000) / 10 : 0;
+  const licenseState = stringValue(licencia.estado) || 'No Emitida';
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Card size="small">
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Space align="center" style={{ width: '100%', justifyContent: 'space-between' }} wrap>
+            <div>
+              <Typography.Text strong>Diagnóstico Operativo</Typography.Text>
+              <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
+                Filtra el tablero por tiempo, origen de API y HTTP para responder dónde, desde cuándo y a quién afecta un problema.
+              </Typography.Paragraph>
+            </div>
+            <Space wrap>
+              <Segmented<TimeRangeKey> size="small" value={globalRange} onChange={setGlobalRange} options={timeRangeOptions} />
+              <Select
+                size="small"
+                value={apiScope}
+                style={{ width: 150 }}
+                onChange={setApiScope}
+                options={[
+                  { value: 'TODAS', label: 'Todas Las APIs' },
+                  { value: 'PROPIAS', label: 'APIs Propias' },
+                  { value: 'EXTERNAS', label: 'APIs Externas' },
+                ]}
+              />
+              <Select
+                size="small"
+                value={statusFilter}
+                style={{ width: 130 }}
+                onChange={setStatusFilter}
+                options={[{ value: 'TODOS', label: 'Todos HTTP' }, ...statusCodes.map((code) => ({ value: code, label: `HTTP ${code}` }))]}
+              />
+              <Button size="small" icon={<ReloadOutlined />} onClick={onReloadDashboard} loading={loading}>Actualizar</Button>
+            </Space>
+          </Space>
+        </Space>
+      </Card>
+
       <Row gutter={[16, 16]}>
-        <Metric title="Carga De Base De Datos" value={`${numberValue(database.loadPercent)}%`} icon={<DatabaseOutlined />} loading={loading} />
-        <Metric title="Latencia De APIs" value={`${numberValue(latency.avgMs)}ms`} icon={<ApiOutlined />} loading={loading} />
-        <Metric title="Conexiones Activas" value={numberValue(systemOverview.activeConnections)} icon={<ThunderboltOutlined />} loading={loading} />
-        <Metric title="Tiempo Activo Del Backend" value={stringValue(uptime.display) || '-'} icon={<FieldTimeOutlined />} loading={loading} />
+        <SignalCard title="¿Está Funcionando?" value={stringValue(uptime.display) || '-'} label="Tiempo activo del Backend" status="success" detail="Disponibilidad local calculada desde el proceso activo." loading={loading} onOpen={() => setDrilldown('TRAFICO')} />
+        <SignalCard title="¿Dónde Falla?" value={`${totalErrors}`} label={`Errores en ${rangeLabel(globalRange)}`} status={totalErrors > 0 ? 'danger' : 'success'} detail={`${errorRate}% de error estimado sobre tráfico filtrado.`} loading={loading} onOpen={() => setDrilldown('ERRORES')} />
+        <SignalCard title="¿Qué Tan Lento Está?" value={`${numberValue(latency.avgMs)}ms`} label={`P95 ${numberValue(latency.p95Ms)}ms`} status={numberValue(latency.avgMs) > 800 ? 'danger' : numberValue(latency.avgMs) > 300 ? 'warning' : 'success'} detail="Latencia promedio y percentil para APIs monitoreadas." loading={loading} onOpen={() => setDrilldown('LATENCIA')} />
+        <SignalCard title="¿Consume Lo Esperado?" value={Number(apiResumen.total ?? 0)} label="Consultas revisadas" status={Number(apiResumen.errores ?? 0) > 0 ? 'warning' : 'success'} detail={`${Number(apiResumen.exitosas ?? 0)} exitosas · ${Number(apiResumen.errores ?? 0)} con error.`} loading={loading} onOpen={() => setDrilldown('CONSUMO')} />
       </Row>
 
       <Row gutter={[16, 16]}>
-        <Metric title="Estado De Licencia" value={stringValue(licencia.estado) || 'No Emitida'} icon={<SafetyCertificateOutlined />} loading={loading} />
+        <Metric title="Estado De Licencia" value={licenseState} icon={<SafetyCertificateOutlined />} loading={loading} />
         <Metric title="Plan Contratado" value={stringValue(plan.nombre) || '-'} icon={<SafetyCertificateOutlined />} loading={loading} />
         <Metric title="Usuarios Activos" value={Number(summary.usuariosActivos ?? 0)} icon={<TeamOutlined />} loading={loading} />
-        <Metric title="Consultas Revisadas" value={Number(apiResumen.total ?? 0)} icon={<ApiOutlined />} loading={loading} />
+        <Metric title="Tráfico Filtrado" value={totalTraffic} icon={<ApiOutlined />} loading={loading} />
       </Row>
 
       <Row gutter={[16, 16]}>
@@ -327,6 +384,26 @@ const DashboardAdmin = ({ loading, licencia, plan, summary, apiResumen, errores,
     </Row>
 
     <ErrorMonitor loading={loading} errores={errores} onReload={onReloadErrors} />
+    <Card title={`Drill-Down: ${drilldownLabel(drilldown)}`} extra={<Tag color="processing">{filteredEvents.length} Eventos</Tag>} loading={loading}>
+      <Typography.Paragraph type="secondary">
+        Muestra eventos reales filtrados por tiempo, origen y HTTP. Sirve para pasar de una métrica agregada al registro que explica el problema.
+      </Typography.Paragraph>
+      <Table
+        rowKey={(row, index) => String(row.id ?? row.referencia ?? index)}
+        size="small"
+        dataSource={filterDrilldownEvents(filteredEvents, drilldown)}
+        pagination={{ pageSize: 8, showSizeChanger: true }}
+        scroll={{ x: true }}
+        columns={[
+          { title: 'Fecha', dataIndex: 'fecha', render: formatValue },
+          { title: 'Fuente', dataIndex: 'fuente', render: formatValue },
+          { title: 'Origen', dataIndex: 'origen', render: formatValue },
+          { title: 'HTTP', render: (_, row) => <StatusTag value={row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp} /> },
+          { title: 'Código', render: (_, row) => formatValue(row.codigo_error ?? row.codigo) },
+          { title: 'Mensaje', dataIndex: 'mensaje', ellipsis: true, render: formatValue },
+        ]}
+      />
+    </Card>
   </Space>
   );
 };
@@ -508,6 +585,14 @@ const getRangeStart = (range: TimeRangeKey) => {
   return now.subtract(3, 'hour');
 };
 
+const rangeLabel = (range: TimeRangeKey) => timeRangeOptions.find((option) => option.value === range)?.label || '1hr';
+
+const isWithinTimeRange = (raw: unknown, range: TimeRangeKey) => {
+  if (!raw) return false;
+  const value = dayjs(String(raw));
+  return value.isValid() && value.isAfter(getRangeStart(range));
+};
+
 const filterRowsByTimeRange = (rows: Record<string, unknown>[], field: string, range: TimeRangeKey) => {
   const start = getRangeStart(range);
   return rows.filter((row) => {
@@ -516,6 +601,27 @@ const filterRowsByTimeRange = (rows: Record<string, unknown>[], field: string, r
     const value = dayjs(String(raw));
     return value.isValid() && value.isAfter(start);
   });
+};
+
+const isExternalEvent = (row: Record<string, unknown>) => {
+  const source = `${row.fuente ?? ''} ${row.origen ?? ''}`.toUpperCase();
+  return source.includes('EXTERNA') || source.includes('CONSULTAS_EXTERNAS') || source.includes('SANDBOX');
+};
+
+const drilldownLabel = (key: DrilldownKey) => ({
+  ERRORES: 'Errores Reales',
+  LATENCIA: 'Eventos De Latencia',
+  TRAFICO: 'Tráfico Y Actividad',
+  CONSUMO: 'Consumo De APIs',
+  LICENCIA: 'Licencia',
+}[key]);
+
+const filterDrilldownEvents = (events: Record<string, unknown>[], key: DrilldownKey) => {
+  if (key === 'ERRORES') return events.filter((row) => numberValue(row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp) >= 400);
+  if (key === 'LATENCIA') return events.filter((row) => numberValue(row.duracion_ms ?? row.duracionMs) >= 300);
+  if (key === 'CONSUMO') return events.filter((row) => `${row.fuente ?? ''} ${row.origen ?? ''}`.toUpperCase().includes('CONSULT'));
+  if (key === 'LICENCIA') return events.filter((row) => `${row.origen ?? ''} ${row.endpoint ?? ''}`.toUpperCase().includes('LICEN'));
+  return events;
 };
 
 const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, instalacionId, suscripcion, plan, licencia, pagos, diasRestantes, onValidarLicencia }: {
@@ -666,6 +772,33 @@ const Metric = ({ title, value, icon, loading }: { title: string; value: string 
     </Card>
   </Col>
 );
+
+const SignalCard = ({ title, value, label, status, detail, loading, onOpen }: {
+  title: string;
+  value: string | number;
+  label: string;
+  status: 'success' | 'warning' | 'danger';
+  detail: string;
+  loading: boolean;
+  onOpen: () => void;
+}) => {
+  const color = status === 'danger' ? '#cf1322' : status === 'warning' ? '#d48806' : '#237804';
+  return (
+    <Col xs={24} md={12} xl={6}>
+      <Card size="small" loading={loading} hoverable onClick={onOpen}>
+        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+          <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+            <Typography.Text strong>{title}</Typography.Text>
+            <Tag color={status === 'danger' ? 'red' : status === 'warning' ? 'gold' : 'green'}>{status === 'danger' ? 'Atención' : status === 'warning' ? 'Revisar' : 'OK'}</Tag>
+          </Space>
+          <Typography.Title level={2} style={{ margin: 0, color }}>{value}</Typography.Title>
+          <Typography.Text>{label}</Typography.Text>
+          <Typography.Text type="secondary">{detail}</Typography.Text>
+        </Space>
+      </Card>
+    </Col>
+  );
+};
 
 const DataTable = ({ title, rows, loading }: { title: string; rows: Record<string, unknown>[]; loading: boolean }) => (
   <Card title={title}>

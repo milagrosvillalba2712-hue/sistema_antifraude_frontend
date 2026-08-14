@@ -337,12 +337,12 @@ const ErrorMonitor = ({ loading, errores, onReload }: {
     return status === 'TODOS' || rowStatus === status;
   });
 
-  const reload = async () => {
-    const { desde, hasta } = rangeToApiParams(range);
+  const reloadWith = async (nextStatus = status, nextRange = range) => {
+    const { desde, hasta } = rangeToApiParams(nextRange);
     setReloading(true);
     try {
       await onReload({
-        status: status === 'TODOS' ? undefined : status,
+        status: nextStatus === 'TODOS' ? undefined : nextStatus,
         desde,
         hasta,
       });
@@ -350,6 +350,7 @@ const ErrorMonitor = ({ loading, errores, onReload }: {
       setReloading(false);
     }
   };
+  const reload = () => reloadWith();
 
   return (
     <Card
@@ -362,13 +363,25 @@ const ErrorMonitor = ({ loading, errores, onReload }: {
             size="small"
             value={status}
             style={{ width: 150 }}
-            onChange={setStatus}
+            onChange={(nextStatus) => {
+              setStatus(nextStatus);
+              void reloadWith(nextStatus, range);
+            }}
             options={[
               { value: 'TODOS', label: 'Todos HTTP' },
               ...statusCodes.map((code) => ({ value: code, label: `HTTP ${code}` })),
             ]}
           />
-          <TimeRangeControls value={range} onChange={setRange} onRefresh={reload} loading={reloading} hideRefresh />
+          <TimeRangeControls
+            value={range}
+            onChange={(nextRange) => {
+              setRange(nextRange);
+              void reloadWith(status, nextRange);
+            }}
+            onRefresh={reload}
+            loading={reloading}
+            hideRefresh
+          />
         </Space>
       )}
     >

@@ -2,16 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   ApiOutlined,
+  CalendarOutlined,
   CloudSyncOutlined,
   FieldTimeOutlined,
   InfoCircleOutlined,
   ReloadOutlined,
+  SearchOutlined,
   SafetyCertificateOutlined,
-  TeamOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { Line } from '@ant-design/charts';
-import { Alert, Button, Card, Col, Descriptions, List, Row, Segmented, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, DatePicker, Descriptions, Input, List, Popover, Row, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { adminEmpresaApi } from '../../api';
@@ -20,9 +21,8 @@ import { useConfirmAction } from '../../components/common';
 import { ConsumoVsPlan, EventosLicencia, INSTALACION_STORAGE_KEY, InstalacionLicenciaCard } from '../../components/licencia';
 
 type AdminEmpresaSection = 'dashboard' | 'licencia-pagos' | 'consumo' | 'apis' | 'configuracion' | 'auditoria';
-type TimeRangeKey = '5m' | '10m' | '30m' | '1h' | '3h';
-type ApiScopeKey = 'TODAS' | 'PROPIAS' | 'EXTERNAS';
-type DrilldownKey = 'ERRORES' | 'LATENCIA' | 'TRAFICO' | 'CONSUMO' | 'LICENCIA';
+type RelativeTimeRangeKey = '5m' | '10m' | '15m' | '30m' | '1h' | '3h' | '6h' | '12h' | '24h';
+type TimeRangeSelection = { type: 'relative'; key: RelativeTimeRangeKey } | { type: 'absolute'; from: string; to: string };
 
 const sectionMeta: Record<AdminEmpresaSection, { title: string; description: string }> = {
   dashboard: {
@@ -234,82 +234,27 @@ const DashboardAdmin = ({ loading, licencia, plan, summary, apiResumen, errores,
   const latency = asRecord(systemOverview.apiLatency);
   const uptime = asRecord(systemOverview.systemUptime);
   const trafficTrend = arrayValue(systemOverview.trafficTrend24h);
-  const errorTelemetry = arrayValue(systemOverview.errorTelemetry);
-  const eventosRecientes = useMemo(() => arrayValue(errores.eventosRecientes), [errores]);
-  const statusCodes = useMemo(() => Array.from(new Set(eventosRecientes
-    .map((row) => row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp)
-    .filter((value) => value !== null && value !== undefined)
-    .map(String))).sort((a, b) => Number(a) - Number(b)), [eventosRecientes]);
-  const [trafficRange, setTrafficRange] = useState<TimeRangeKey>('1h');
-  const [errorRange, setErrorRange] = useState<TimeRangeKey>('1h');
-  const [globalRange, setGlobalRange] = useState<TimeRangeKey>('1h');
-  const [apiScope, setApiScope] = useState<ApiScopeKey>('TODAS');
-  const [statusFilter, setStatusFilter] = useState('TODOS');
-  const [drilldown, setDrilldown] = useState<DrilldownKey>('ERRORES');
+  const [trafficRange, setTrafficRange] = useState<TimeRangeSelection>({ type: 'relative', key: '1h' });
   const filteredTrafficTrend = useMemo(() => filterRowsByTimeRange(trafficTrend, 'bucket', trafficRange), [trafficRange, trafficTrend]);
-  const filteredErrorTelemetry = useMemo(() => filterRowsByTimeRange(errorTelemetry, 'fecha', errorRange), [errorRange, errorTelemetry]);
-  const filteredEvents = useMemo(() => eventosRecientes
-    .filter((row) => isWithinTimeRange(row.fecha, globalRange))
-    .filter((row) => statusFilter === 'TODOS' || String(row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp ?? '') === statusFilter)
-    .filter((row) => {
-      if (apiScope === 'TODAS') return true;
-      const external = isExternalEvent(row);
-      return apiScope === 'EXTERNAS' ? external : !external;
-    }), [apiScope, eventosRecientes, globalRange, statusFilter]);
   const totalTraffic = filteredTrafficTrend.reduce((sum, row) => sum + numberValue(row.api_internas) + numberValue(row.api_externas), 0);
-  const totalErrors = filteredEvents.filter((row) => numberValue(row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp) >= 400).length;
+  const totalErrors = filteredTrafficTrend.reduce((sum, row) => sum + numberValue(row.api_errores), 0) || Number(apiResumen.errores ?? 0);
   const errorRate = totalTraffic ? Math.round((totalErrors / totalTraffic) * 1000) / 10 : 0;
   const licenseState = stringValue(licencia.estado) || 'No Emitida';
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <Card size="small">
-        <Space direction="vertical" style={{ width: '100%' }}>
-          <Space align="center" style={{ width: '100%', justifyContent: 'space-between' }} wrap>
-            <div>
-              <Typography.Text strong>Diagnóstico Operativo</Typography.Text>
-              <Typography.Paragraph type="secondary" style={{ margin: 0 }}>
-                Filtra el tablero por tiempo, origen de API y HTTP para responder dónde, desde cuándo y a quién afecta un problema.
-              </Typography.Paragraph>
-            </div>
-            <Space wrap>
-              <Segmented<TimeRangeKey> size="small" value={globalRange} onChange={setGlobalRange} options={timeRangeOptions} />
-              <Select
-                size="small"
-                value={apiScope}
-                style={{ width: 150 }}
-                onChange={setApiScope}
-                options={[
-                  { value: 'TODAS', label: 'Todas Las APIs' },
-                  { value: 'PROPIAS', label: 'APIs Propias' },
-                  { value: 'EXTERNAS', label: 'APIs Externas' },
-                ]}
-              />
-              <Select
-                size="small"
-                value={statusFilter}
-                style={{ width: 130 }}
-                onChange={setStatusFilter}
-                options={[{ value: 'TODOS', label: 'Todos HTTP' }, ...statusCodes.map((code) => ({ value: code, label: `HTTP ${code}` }))]}
-              />
-              <Button size="small" icon={<ReloadOutlined />} onClick={onReloadDashboard} loading={loading}>Actualizar</Button>
-            </Space>
-          </Space>
-        </Space>
-      </Card>
-
       <Row gutter={[16, 16]}>
-        <SignalCard title="¿Está Funcionando?" value={stringValue(uptime.display) || '-'} label="Tiempo activo del Backend" status="success" detail="Disponibilidad local calculada desde el proceso activo." loading={loading} onOpen={() => setDrilldown('TRAFICO')} />
-        <SignalCard title="¿Dónde Falla?" value={`${totalErrors}`} label={`Errores en ${rangeLabel(globalRange)}`} status={totalErrors > 0 ? 'danger' : 'success'} detail={`${errorRate}% de error estimado sobre tráfico filtrado.`} loading={loading} onOpen={() => setDrilldown('ERRORES')} />
-        <SignalCard title="¿Qué Tan Lento Está?" value={`${numberValue(latency.avgMs)}ms`} label={`P95 ${numberValue(latency.p95Ms)}ms`} status={numberValue(latency.avgMs) > 800 ? 'danger' : numberValue(latency.avgMs) > 300 ? 'warning' : 'success'} detail="Latencia promedio y percentil para APIs monitoreadas." loading={loading} onOpen={() => setDrilldown('LATENCIA')} />
-        <SignalCard title="¿Consume Lo Esperado?" value={Number(apiResumen.total ?? 0)} label="Consultas revisadas" status={Number(apiResumen.errores ?? 0) > 0 ? 'warning' : 'success'} detail={`${Number(apiResumen.exitosas ?? 0)} exitosas · ${Number(apiResumen.errores ?? 0)} con error.`} loading={loading} onOpen={() => setDrilldown('CONSUMO')} />
+        <SignalCard title="Disponibilidad" value={stringValue(uptime.display) || '-'} label="Tiempo activo del Backend" status="success" detail="Disponibilidad local calculada desde el proceso activo." loading={loading} />
+        <SignalCard title="Errores API" value={`${totalErrors}`} label={`Errores en ${rangeLabel(trafficRange)}`} status={totalErrors > 0 ? 'danger' : 'success'} detail={`${errorRate}% de error estimado sobre tráfico filtrado.`} loading={loading} />
+        <SignalCard title="Latencia API" value={`${numberValue(latency.avgMs)}ms`} label={`P95 ${numberValue(latency.p95Ms)}ms`} status={numberValue(latency.avgMs) > 800 ? 'danger' : numberValue(latency.avgMs) > 300 ? 'warning' : 'success'} detail="Latencia promedio y percentil para APIs monitoreadas." loading={loading} />
+        <SignalCard title="Consumo API" value={Number(apiResumen.total ?? 0)} label="Consultas revisadas" status={Number(apiResumen.errores ?? 0) > 0 ? 'warning' : 'success'} detail={`${Number(apiResumen.exitosas ?? 0)} exitosas · ${Number(apiResumen.errores ?? 0)} con error.`} loading={loading} />
       </Row>
 
       <Row gutter={[16, 16]}>
-        <Metric title="Estado De Licencia" value={licenseState} icon={<SafetyCertificateOutlined />} loading={loading} />
-        <Metric title="Plan Contratado" value={stringValue(plan.nombre) || '-'} icon={<SafetyCertificateOutlined />} loading={loading} />
-        <Metric title="Usuarios Activos" value={Number(summary.usuariosActivos ?? 0)} icon={<TeamOutlined />} loading={loading} />
-        <Metric title="Tráfico Filtrado" value={totalTraffic} icon={<ApiOutlined />} loading={loading} />
+        <SignalCard title="Estado De Licencia" value={licenseState} label="Contrato local" status={licenseState.toUpperCase().includes('ACTIVA') ? 'success' : 'warning'} detail="La vigencia y los pagos se revisan en Licencia y Pagos." loading={loading} />
+        <SignalCard title="Plan Contratado" value={stringValue(plan.nombre) || '-'} label="Plan vigente" status="success" detail="Define usuarios, módulos y consumos permitidos." loading={loading} />
+        <SignalCard title="Usuarios Activos" value={Number(summary.usuariosActivos ?? 0)} label="Usuarios habilitados" status="success" detail="Administrables desde el módulo Usuarios." loading={loading} />
+        <SignalCard title="Tráfico Filtrado" value={totalTraffic} label={`Solicitudes en ${rangeLabel(trafficRange)}`} status={totalTraffic > 0 ? 'success' : 'warning'} detail="Suma APIs internas y externas en el rango seleccionado." loading={loading} />
       </Row>
 
       <Row gutter={[16, 16]}>
@@ -337,7 +282,7 @@ const DashboardAdmin = ({ loading, licencia, plan, summary, apiResumen, errores,
     </Row>
 
     <Row gutter={[16, 16]}>
-      <Col xs={24} xl={15}>
+      <Col xs={24}>
         <Card
           title="Tráfico De APIs"
           loading={loading}
@@ -360,50 +305,9 @@ const DashboardAdmin = ({ loading, licencia, plan, summary, apiResumen, errores,
           />
         </Card>
       </Col>
-      <Col xs={24} xl={9}>
-        <Card
-          title="Telemetría De Errores"
-          loading={loading}
-          extra={<TimeRangeControls value={errorRange} onChange={setErrorRange} onRefresh={onReloadDashboard} loading={loading} compact />}
-          styles={{ body: { background: '#111827', color: '#e5e7eb', minHeight: 280 } }}
-        >
-          <Space direction="vertical" style={{ width: '100%' }}>
-            {filteredErrorTelemetry.slice(0, 8).map((row, index) => (
-              <div key={String(row.referencia ?? row.fecha ?? index)} style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 10 }}>
-                <Typography.Text style={{ color: '#f87171', fontSize: 12 }}>{stringValue(row.tipo) || 'ERR'} </Typography.Text>
-                <Typography.Text style={{ color: '#fbbf24', fontSize: 12 }}>{stringValue(row.codigo) || '-'}</Typography.Text>
-                <Typography.Text style={{ color: '#94a3b8', fontSize: 12 }}> {formatHour(row.fecha)}</Typography.Text>
-                <Typography.Text style={{ color: '#ffffff', display: 'block', fontSize: 12 }}>{stringValue(row.origen) || 'API'}</Typography.Text>
-                <Typography.Text style={{ color: '#cbd5e1', display: 'block', fontSize: 12 }}>{stringValue(row.mensaje) || '-'}</Typography.Text>
-              </div>
-            ))}
-            {filteredErrorTelemetry.length === 0 && <Typography.Text style={{ color: '#cbd5e1' }}>Sin errores registrados en el rango seleccionado.</Typography.Text>}
-          </Space>
-        </Card>
-      </Col>
     </Row>
 
     <ErrorMonitor loading={loading} errores={errores} onReload={onReloadErrors} />
-    <Card title={`Drill-Down: ${drilldownLabel(drilldown)}`} extra={<Tag color="processing">{filteredEvents.length} Eventos</Tag>} loading={loading}>
-      <Typography.Paragraph type="secondary">
-        Muestra eventos reales filtrados por tiempo, origen y HTTP. Sirve para pasar de una métrica agregada al registro que explica el problema.
-      </Typography.Paragraph>
-      <Table
-        rowKey={(row, index) => String(row.id ?? row.referencia ?? index)}
-        size="small"
-        dataSource={filterDrilldownEvents(filteredEvents, drilldown)}
-        pagination={{ pageSize: 8, showSizeChanger: true }}
-        scroll={{ x: true }}
-        columns={[
-          { title: 'Fecha', dataIndex: 'fecha', render: formatValue },
-          { title: 'Fuente', dataIndex: 'fuente', render: formatValue },
-          { title: 'Origen', dataIndex: 'origen', render: formatValue },
-          { title: 'HTTP', render: (_, row) => <StatusTag value={row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp} /> },
-          { title: 'Código', render: (_, row) => formatValue(row.codigo_error ?? row.codigo) },
-          { title: 'Mensaje', dataIndex: 'mensaje', ellipsis: true, render: formatValue },
-        ]}
-      />
-    </Card>
   </Space>
   );
 };
@@ -413,38 +317,34 @@ const ErrorMonitor = ({ loading, errores, onReload }: {
   errores: Record<string, unknown>;
   onReload: (filters?: { status?: string; desde?: string; hasta?: string }) => Promise<void>;
 }) => {
-  const [categoria, setCategoria] = useState('TODOS');
   const [status, setStatus] = useState('TODOS');
-  const [range, setRange] = useState<TimeRangeKey>('1h');
+  const [range, setRange] = useState<TimeRangeSelection>({ type: 'relative', key: '1h' });
   const [reloading, setReloading] = useState(false);
   const internas = useMemo(() => arrayValue(errores.internas), [errores]);
   const externas = useMemo(() => arrayValue(errores.externas), [errores]);
-  const eventosExternos = useMemo(() => arrayValue(errores.eventosExternos), [errores]);
   const eventosRecientes = useMemo(() => arrayValue(errores.eventosRecientes), [errores]);
   const statusCodes = useMemo(() => {
     const fromApi = Array.isArray(errores.statusCodes) ? errores.statusCodes.map(String) : [];
-    const fromRows = [...internas, ...externas, ...eventosExternos, ...eventosRecientes]
+    const fromRows = [...internas, ...externas, ...eventosRecientes]
       .map((row) => row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp)
       .filter((value) => value !== null && value !== undefined)
       .map(String);
     return Array.from(new Set([...fromApi, ...fromRows])).sort((a, b) => Number(a) - Number(b));
-  }, [errores, internas, externas, eventosExternos, eventosRecientes]);
+  }, [errores, internas, externas, eventosRecientes]);
 
   const filterRows = (rows: Record<string, unknown>[]) => rows.filter((row) => {
     const rowStatus = String(row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp ?? '');
     return status === 'TODOS' || rowStatus === status;
   });
 
-  const showInternal = categoria === 'TODOS' || categoria === 'INTERNAS';
-  const showExternal = categoria === 'TODOS' || categoria === 'EXTERNAS';
   const reload = async () => {
-    const desde = getRangeStart(range).toISOString();
+    const { desde, hasta } = rangeToApiParams(range);
     setReloading(true);
     try {
       await onReload({
         status: status === 'TODOS' ? undefined : status,
         desde,
-        hasta: dayjs().toISOString(),
+        hasta,
       });
     } finally {
       setReloading(false);
@@ -460,17 +360,6 @@ const ErrorMonitor = ({ loading, errores, onReload }: {
           <Button size="small" icon={<ReloadOutlined />} loading={reloading} onClick={reload}>Actualizar</Button>
           <Select
             size="small"
-            value={categoria}
-            style={{ width: 180 }}
-            onChange={setCategoria}
-            options={[
-              { value: 'TODOS', label: 'Todas Las APIs' },
-              { value: 'INTERNAS', label: 'APIs Propias' },
-              { value: 'EXTERNAS', label: 'APIs Externas' },
-            ]}
-          />
-          <Select
-            size="small"
             value={status}
             style={{ width: 150 }}
             onChange={setStatus}
@@ -479,36 +368,25 @@ const ErrorMonitor = ({ loading, errores, onReload }: {
               ...statusCodes.map((code) => ({ value: code, label: `HTTP ${code}` })),
             ]}
           />
-          <Segmented<TimeRangeKey>
-            size="small"
-            value={range}
-            onChange={setRange}
-            options={timeRangeOptions}
-          />
+          <TimeRangeControls value={range} onChange={setRange} onRefresh={reload} loading={reloading} hideRefresh />
         </Space>
       )}
     >
       <Space direction="vertical" style={{ width: '100%' }} size="middle">
         <Row gutter={[16, 16]}>
-          {showInternal && (
-            <Col xs={24} xl={12}>
-              <ApiErrorTable title="Errores De APIs Propias" rows={filterRows(internas)} loading={loading} />
-            </Col>
-          )}
-          {showExternal && (
-            <Col xs={24} xl={12}>
-              <ApiErrorTable title="Errores De APIs Externas" rows={filterRows(externas)} loading={loading} />
-            </Col>
-          )}
+          <Col xs={24} xl={12}>
+            <ApiErrorTable title="Errores De APIs Propias" rows={filterRows(internas)} loading={loading} />
+          </Col>
+          <Col xs={24} xl={12}>
+            <ApiErrorTable title="Errores De APIs Externas" rows={filterRows(externas)} loading={loading} />
+          </Col>
         </Row>
-        {showExternal && (
-          <ApiErrorTable
-            title="Eventos"
-            rows={filterRows(eventosRecientes)}
-            loading={loading}
-            compact
-          />
-        )}
+        <ApiErrorTable
+          title="Eventos"
+          rows={filterRows(eventosRecientes)}
+          loading={loading}
+          compact
+        />
       </Space>
     </Card>
   );
@@ -522,9 +400,10 @@ const ApiErrorTable = ({ title, rows, loading, compact = false }: {
 }) => (
   <Card title={title} size="small">
     <Table
-      rowKey={(row, index) => String(row.id ?? row.codigo_error ?? row.codigoError ?? index)}
+      rowKey={(row, index) => String(row.id ?? `${row.origen ?? ''}-${row.codigo_error ?? row.codigo ?? row.codigoError ?? index}`)}
       columns={[
-        { title: 'Origen', dataIndex: 'origen', ellipsis: true, render: formatValue },
+        { title: 'Fecha', dataIndex: 'fecha', width: 180, render: (_, row) => formatValue(resolveApiDate(row)) },
+        { title: 'Origen', dataIndex: 'origen', ellipsis: true, render: (value) => formatValue(cleanApiOrigin(value)) },
         { title: 'Código', dataIndex: 'codigo_error', ellipsis: true, render: (_, row) => formatValue(row.codigo_error ?? row.codigo) },
         {
           title: 'HTTP',
@@ -533,7 +412,7 @@ const ApiErrorTable = ({ title, rows, loading, compact = false }: {
           render: (value, row) => <StatusTag value={value ?? row.status_http ?? row.statusCode ?? row.statusHttp} />,
         },
         { title: 'Significado', dataIndex: 'mensaje', ellipsis: true, render: formatValue },
-        ...(compact ? [{ title: 'Fuente', dataIndex: 'fuente', ellipsis: true, render: formatValue }, { title: 'Fecha', dataIndex: 'fecha', ellipsis: true, render: formatValue }] : []),
+        ...(compact ? [{ title: 'Fuente', dataIndex: 'fuente', ellipsis: true, render: formatValue }] : []),
       ]}
       dataSource={rows}
       loading={loading}
@@ -550,79 +429,200 @@ const StatusTag = ({ value }: { value: unknown }) => {
   return <Tag color={color}>{status ? `HTTP ${status}` : '-'}</Tag>;
 };
 
-const timeRangeOptions: Array<{ label: string; value: TimeRangeKey }> = [
+const timeRangeOptions: Array<{ label: string; value: RelativeTimeRangeKey }> = [
   { label: '5min', value: '5m' },
   { label: '10min', value: '10m' },
+  { label: '15min', value: '15m' },
   { label: '30min', value: '30m' },
   { label: '1hr', value: '1h' },
   { label: '3hrs', value: '3h' },
+  { label: '6hrs', value: '6h' },
+  { label: '12hrs', value: '12h' },
+  { label: '24hrs', value: '24h' },
 ];
 
-const TimeRangeControls = ({ value, onChange, onRefresh, loading, compact = false }: {
-  value: TimeRangeKey;
-  onChange: (value: TimeRangeKey) => void;
+const recentAbsoluteRanges = [
+  { from: dayjs().subtract(1, 'hour').startOf('minute').toISOString(), to: dayjs().startOf('minute').toISOString() },
+  { from: dayjs().subtract(30, 'minute').startOf('minute').toISOString(), to: dayjs().startOf('minute').toISOString() },
+  { from: dayjs().subtract(2, 'hour').startOf('minute').toISOString(), to: dayjs().subtract(1, 'hour').startOf('minute').toISOString() },
+];
+
+const TimeRangeControls = ({ value, onChange, onRefresh, loading, hideRefresh = false }: {
+  value: TimeRangeSelection;
+  onChange: (value: TimeRangeSelection) => void;
   onRefresh: () => Promise<void>;
   loading: boolean;
-  compact?: boolean;
-}) => (
-  <Space wrap>
-    <Segmented<TimeRangeKey>
-      size="small"
-      value={value}
-      onChange={onChange}
-      options={compact ? timeRangeOptions.slice(1) : timeRangeOptions}
-    />
-    <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={onRefresh}>Actualizar</Button>
-  </Space>
-);
+  hideRefresh?: boolean;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [draft, setDraft] = useState<TimeRangeSelection>(value);
+  const quickRanges = timeRangeOptions.filter((option) => option.label.toLowerCase().includes(search.toLowerCase()));
+  const applyDraft = () => {
+    onChange(draft);
+    setOpen(false);
+  };
 
-const getRangeStart = (range: TimeRangeKey) => {
+  return (
+    <Space wrap>
+      <Popover
+        trigger="click"
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (nextOpen) setDraft(value);
+        }}
+        placement="bottomRight"
+        overlayStyle={{ width: 860 }}
+        content={(
+          <div style={{ width: 820 }}>
+            <Row gutter={16}>
+              <Col span={11}>
+                <Typography.Title level={5} style={{ marginTop: 0 }}>Rango De Tiempo Absoluto</Typography.Title>
+                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                  <div>
+                    <Typography.Text strong>Desde</Typography.Text>
+                    <DatePicker
+                      showTime
+                      style={{ width: '100%', marginTop: 6 }}
+                      value={dayjs(draft.type === 'absolute' ? draft.from : getRangeStart(draft))}
+                      onChange={(date) => {
+                        if (!date) return;
+                        const to = draft.type === 'absolute' ? draft.to : dayjs().toISOString();
+                        setDraft({ type: 'absolute', from: date.toISOString(), to });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Typography.Text strong>Hasta</Typography.Text>
+                    <DatePicker
+                      showTime
+                      style={{ width: '100%', marginTop: 6 }}
+                      value={dayjs(draft.type === 'absolute' ? draft.to : getRangeEnd(draft))}
+                      onChange={(date) => {
+                        if (!date) return;
+                        const from = draft.type === 'absolute' ? draft.from : getRangeStart(draft).toISOString();
+                        setDraft({ type: 'absolute', from, to: date.toISOString() });
+                      }}
+                    />
+                  </div>
+                  <Button type="primary" onClick={applyDraft}>Aplicar Rango</Button>
+                  <div>
+                    <Typography.Text strong>Rangos Absolutos Recientes</Typography.Text>
+                    <Space direction="vertical" size={4} style={{ width: '100%', marginTop: 8 }}>
+                      {recentAbsoluteRanges.map((item) => (
+                        <Button
+                          key={`${item.from}-${item.to}`}
+                          type="link"
+                          style={{ padding: 0, height: 'auto', textAlign: 'left' }}
+                          onClick={() => setDraft({ type: 'absolute', from: item.from, to: item.to })}
+                        >
+                          {dayjs(item.from).format('YYYY-MM-DD HH:mm:ss')} a {dayjs(item.to).format('YYYY-MM-DD HH:mm:ss')}
+                        </Button>
+                      ))}
+                    </Space>
+                  </div>
+                </Space>
+              </Col>
+              <Col span={13}>
+                <Input
+                  allowClear
+                  prefix={<SearchOutlined />}
+                  placeholder="Buscar rangos rápidos"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  style={{ marginBottom: 10 }}
+                />
+                <div style={{ maxHeight: 360, overflowY: 'auto', borderLeft: '1px solid #f0f0f0' }}>
+                  {quickRanges.map((option) => (
+                    <Button
+                      key={option.value}
+                      type="text"
+                      block
+                      style={{
+                        textAlign: 'left',
+                        height: 44,
+                        borderRadius: 0,
+                        background: draft.type === 'relative' && draft.key === option.value ? '#f5f5f5' : undefined,
+                      }}
+                      onClick={() => {
+                        const next = { type: 'relative', key: option.value } as TimeRangeSelection;
+                        setDraft(next);
+                        onChange(next);
+                        setOpen(false);
+                      }}
+                    >
+                      Últimos {option.label}
+                    </Button>
+                  ))}
+                </div>
+                <Space style={{ width: '100%', justifyContent: 'space-between', marginTop: 12 }}>
+                  <Typography.Text type="secondary">Hora Del Navegador</Typography.Text>
+                  <Tag>UTC-03</Tag>
+                </Space>
+              </Col>
+            </Row>
+          </div>
+        )}
+      >
+        <Button size="small" icon={<CalendarOutlined />}>{rangeLabel(value)}</Button>
+      </Popover>
+      {!hideRefresh && <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={onRefresh}>Actualizar</Button>}
+    </Space>
+  );
+};
+
+const getRangeStart = (range: TimeRangeSelection) => {
+  if (range.type === 'absolute') return dayjs(range.from);
   const now = dayjs();
-  if (range === '5m') return now.subtract(5, 'minute');
-  if (range === '10m') return now.subtract(10, 'minute');
-  if (range === '30m') return now.subtract(30, 'minute');
-  if (range === '1h') return now.subtract(1, 'hour');
-  return now.subtract(3, 'hour');
+  if (range.key === '5m') return now.subtract(5, 'minute');
+  if (range.key === '10m') return now.subtract(10, 'minute');
+  if (range.key === '15m') return now.subtract(15, 'minute');
+  if (range.key === '30m') return now.subtract(30, 'minute');
+  if (range.key === '1h') return now.subtract(1, 'hour');
+  if (range.key === '3h') return now.subtract(3, 'hour');
+  if (range.key === '6h') return now.subtract(6, 'hour');
+  if (range.key === '12h') return now.subtract(12, 'hour');
+  return now.subtract(24, 'hour');
 };
 
-const rangeLabel = (range: TimeRangeKey) => timeRangeOptions.find((option) => option.value === range)?.label || '1hr';
+const getRangeEnd = (range: TimeRangeSelection) => range.type === 'absolute' ? dayjs(range.to) : dayjs();
 
-const isWithinTimeRange = (raw: unknown, range: TimeRangeKey) => {
-  if (!raw) return false;
-  const value = dayjs(String(raw));
-  return value.isValid() && value.isAfter(getRangeStart(range));
+const rangeLabel = (range: TimeRangeSelection) => {
+  if (range.type === 'absolute') return `${dayjs(range.from).format('DD/MM HH:mm')} - ${dayjs(range.to).format('DD/MM HH:mm')}`;
+  return timeRangeOptions.find((option) => option.value === range.key)?.label || '1hr';
 };
 
-const filterRowsByTimeRange = (rows: Record<string, unknown>[], field: string, range: TimeRangeKey) => {
+const rangeToApiParams = (range: TimeRangeSelection) => ({
+  desde: getRangeStart(range).toISOString(),
+  hasta: getRangeEnd(range).toISOString(),
+});
+
+const filterRowsByTimeRange = (rows: Record<string, unknown>[], field: string, range: TimeRangeSelection) => {
   const start = getRangeStart(range);
+  const end = getRangeEnd(range);
   return rows.filter((row) => {
     const raw = row[field];
     if (!raw) return false;
     const value = dayjs(String(raw));
-    return value.isValid() && value.isAfter(start);
+    return value.isValid() && value.isAfter(start) && value.isBefore(end);
   });
 };
 
-const isExternalEvent = (row: Record<string, unknown>) => {
-  const source = `${row.fuente ?? ''} ${row.origen ?? ''}`.toUpperCase();
-  return source.includes('EXTERNA') || source.includes('CONSULTAS_EXTERNAS') || source.includes('SANDBOX');
-};
+const cleanApiOrigin = (value: unknown) => (stringValue(value) ?? '')
+  .replace(/^INTERNA:/i, '')
+  .replace(/^EXTERNA:/i, '');
 
-const drilldownLabel = (key: DrilldownKey) => ({
-  ERRORES: 'Errores Reales',
-  LATENCIA: 'Eventos De Latencia',
-  TRAFICO: 'Tráfico Y Actividad',
-  CONSUMO: 'Consumo De APIs',
-  LICENCIA: 'Licencia',
-}[key]);
-
-const filterDrilldownEvents = (events: Record<string, unknown>[], key: DrilldownKey) => {
-  if (key === 'ERRORES') return events.filter((row) => numberValue(row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp) >= 400);
-  if (key === 'LATENCIA') return events.filter((row) => numberValue(row.duracion_ms ?? row.duracionMs) >= 300);
-  if (key === 'CONSUMO') return events.filter((row) => `${row.fuente ?? ''} ${row.origen ?? ''}`.toUpperCase().includes('CONSULT'));
-  if (key === 'LICENCIA') return events.filter((row) => `${row.origen ?? ''} ${row.endpoint ?? ''}`.toUpperCase().includes('LICEN'));
-  return events;
-};
+const resolveApiDate = (row: Record<string, unknown>) => row.fecha
+  ?? row.fechaEvento
+  ?? row.fecha_evento
+  ?? row.fechaConsulta
+  ?? row.fecha_consulta
+  ?? row.timestamp
+  ?? row.fecha_hora_creacion
+  ?? row.fechaHoraCreacion
+  ?? row.fecha_hora_modificacion
+  ?? row.fechaHoraModificacion;
 
 const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, instalacionId, suscripcion, plan, licencia, pagos, diasRestantes, onValidarLicencia }: {
   loading: boolean;
@@ -780,12 +780,12 @@ const SignalCard = ({ title, value, label, status, detail, loading, onOpen }: {
   status: 'success' | 'warning' | 'danger';
   detail: string;
   loading: boolean;
-  onOpen: () => void;
+  onOpen?: () => void;
 }) => {
   const color = status === 'danger' ? '#cf1322' : status === 'warning' ? '#d48806' : '#237804';
   return (
     <Col xs={24} md={12} xl={6}>
-      <Card size="small" loading={loading} hoverable onClick={onOpen}>
+      <Card size="small" loading={loading} hoverable={Boolean(onOpen)} onClick={onOpen}>
         <Space direction="vertical" size={4} style={{ width: '100%' }}>
           <Space style={{ width: '100%', justifyContent: 'space-between' }}>
             <Typography.Text strong>{title}</Typography.Text>

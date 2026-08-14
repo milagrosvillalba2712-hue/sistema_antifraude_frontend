@@ -39,7 +39,7 @@ const VerifyEmail = () => {
         {estado === 'ok' && (
           <Result
             status="success"
-            title="Email Verificado"
+            title="Correo Electrónico Verificado"
             subTitle={detalle}
             extra={
               <Link to="/login">

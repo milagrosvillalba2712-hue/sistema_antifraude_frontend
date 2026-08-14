@@ -25,6 +25,14 @@ export const adminEmpresaApi = {
     const { data } = await api.get('/admin-empresa/apis');
     return data;
   },
+  errores: async (params?: { status?: string; desde?: string; hasta?: string }): Promise<Record<string, unknown>> => {
+    const { data } = await api.get('/admin-empresa/errores', { params });
+    return data;
+  },
+  systemOverview: async (): Promise<Record<string, unknown>> => {
+    const { data } = await api.get('/admin-empresa/system-overview');
+    return data;
+  },
   conectividad: async (): Promise<Record<string, unknown>> => {
     const { data } = await api.get('/admin-empresa/conectividad');
     return data;

@@ -24,7 +24,7 @@ const ResetPassword = () => {
       await authApi.resetPassword(codigo, values.password);
       setDone(true);
     } catch (error: unknown) {
-      message.error(error instanceof Error ? error.message : 'No se pudo restablecer la contrasena');
+      message.error(error instanceof Error ? error.message : 'No se pudo restablecer la contraseña');
     }
   };
 
@@ -34,7 +34,7 @@ const ResetPassword = () => {
         <Result
           status="success"
           title="Contraseña Restablecida"
-          subTitle="Ya puedes iniciar sesion con tu nueva contrasena."
+          subTitle="Ya puedes iniciar sesión con tu nueva contraseña."
           extra={
             <Link to="/login">
               <Button type="primary">Ir Al Login</Button>
@@ -52,7 +52,7 @@ const ResetPassword = () => {
           <RegulaIcon size={56} />
           <div style={{ textAlign: 'center' }}>
             <Typography.Title level={2} style={{ marginBottom: 0 }}>Nueva Contraseña</Typography.Title>
-            <Typography.Text type="secondary">Define una nueva contrasena para tu cuenta</Typography.Text>
+            <Typography.Text type="secondary">Define una nueva contraseña para tu cuenta</Typography.Text>
           </div>
         </Space>
 
@@ -61,28 +61,28 @@ const ResetPassword = () => {
             label="Nueva Contraseña"
             name="password"
             rules={[
-              { required: true, message: 'Ingresa una contrasena' },
-              { min: 10, message: 'Minimo 10 caracteres' },
+              { required: true, message: 'Ingresa una contraseña' },
+              { min: 10, message: 'Mínimo 10 caracteres' },
             ]}
             dependencies={['confirmPassword']}
           >
-            <Input.Password placeholder="Minimo 10 caracteres" autoComplete="new-password" />
+            <Input.Password placeholder="Mínimo 10 caracteres" autoComplete="new-password" />
           </Form.Item>
           <Form.Item
             label="Confirmar Contraseña"
             name="confirmPassword"
             dependencies={['password']}
             rules={[
-              { required: true, message: 'Confirma tu contrasena' },
+              { required: true, message: 'Confirma tu contraseña' },
               ({ getFieldValue }) => ({
                 validator: (_, value) =>
                   !value || getFieldValue('password') === value
                     ? Promise.resolve()
-                    : Promise.reject(new Error('Las contrasenas no coinciden')),
+                    : Promise.reject(new Error('Las contraseñas no coinciden')),
               }),
             ]}
           >
-            <Input.Password placeholder="Repite la contrasena" autoComplete="new-password" />
+            <Input.Password placeholder="Repite la contraseña" autoComplete="new-password" />
           </Form.Item>
           <Button type="primary" htmlType="submit" block>
             Restablecer Contraseña

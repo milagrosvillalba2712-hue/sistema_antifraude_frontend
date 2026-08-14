@@ -34,7 +34,7 @@ const AdminGeneral = () => {
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <div>
-        <Typography.Title level={2} style={{ marginBottom: 0 }}>Admin General</Typography.Title>
+        <Typography.Title level={2} style={{ marginBottom: 0 }}>Administrador General</Typography.Title>
         <Typography.Text type="secondary">Vista global de clientes, licencias, consumo, roles y permisos de Regula.</Typography.Text>
       </div>
 

@@ -130,10 +130,10 @@ const InstalacionLicenciaCard = ({ empresaId, suscripcionActivaId }: Props) => {
     setAccion('heartbeat');
     try {
       const respuesta = await licensingLocalApi.heartbeat({ instalacionId });
-      message.success(`Heartbeat registrado: ${respuesta.ultimoHeartbeatEn}`);
+      message.success(`Validación periódica registrada: ${respuesta.ultimoHeartbeatEn}`);
       await cargar(instalacionId);
     } catch (error: unknown) {
-      message.error(error instanceof Error ? error.message : 'No se pudo registrar el heartbeat');
+      message.error(error instanceof Error ? error.message : 'No se pudo registrar la validación periódica');
     } finally {
       setAccion(null);
     }
@@ -158,8 +158,8 @@ const InstalacionLicenciaCard = ({ empresaId, suscripcionActivaId }: Props) => {
               type="info"
               showIcon
               icon={<CloudServerOutlined />}
-              message="Instalacion no registrada"
-              description="Registra este equipo como instalacion on-premise para emitir la licencia local. La identidad se calcula con la huella del navegador (demo)."
+              message="Instalación no registrada"
+              description="Registra este equipo como instalación on-premise para emitir la licencia local. La identidad se calcula con la huella del navegador (demo)."
             />
             <Button type="primary" icon={<SafetyCertificateOutlined />} loading={accion === 'instalar'} onClick={handleInstalar}>
               Instalar En Este Equipo
@@ -181,15 +181,15 @@ const InstalacionLicenciaCard = ({ empresaId, suscripcionActivaId }: Props) => {
               column={2}
               items={[
                 { key: 'identificador', label: 'Identificador', children: estado?.identificadorInstalacion || '-' },
-                { key: 'estado', label: 'Estado Instalacion', children: <Tag>{estado?.estadoInstalacion || '-'}</Tag> },
-                { key: 'clon', label: 'Clon Detectado', children: estado?.clonDetectado ? 'Si' : 'No' },
+                { key: 'estado', label: 'Estado De Instalación', children: <Tag>{estado?.estadoInstalacion || '-'}</Tag> },
+                { key: 'clon', label: 'Clon Detectado', children: estado?.clonDetectado ? 'Sí' : 'No' },
                 { key: 'activada', label: 'Activada En', children: estado?.activadaEn || '-' },
-                { key: 'heartbeat', label: 'Ultimo Heartbeat', children: estado?.ultimoHeartbeatEn || '-' },
+                { key: 'heartbeat', label: 'Última Validación Periódica', children: estado?.ultimoHeartbeatEn || '-' },
                 { key: 'controlPlane', label: 'Control Plane', children: estado?.controlPlane?.habilitado ? 'Habilitado' : 'Offline' },
                 { key: 'plan', label: 'Plan', children: String(licencia?.planCodigo ?? '-') },
                 { key: 'vence', label: 'Vence', children: String(licencia?.venceEn ?? '-') },
-                { key: 'gracia', label: 'Dias De Gracia', children: String(licencia?.diasGracia ?? '-') },
-                { key: 'estadoLicencia', label: 'Estado Licencia', children: <Tag>{String(licencia?.estado ?? 'NO EMITIDA')}</Tag> },
+                { key: 'gracia', label: 'Días De Gracia', children: String(licencia?.diasGracia ?? '-') },
+                { key: 'estadoLicencia', label: 'Estado De Licencia', children: <Tag>{String(licencia?.estado ?? 'NO EMITIDA')}</Tag> },
               ]}
             />
             <Space wrap>
@@ -199,7 +199,7 @@ const InstalacionLicenciaCard = ({ empresaId, suscripcionActivaId }: Props) => {
                 </Button>
               )}
               <Button icon={<ThunderboltOutlined />} loading={accion === 'heartbeat'} onClick={handleHeartbeat}>
-                Heartbeat
+                Validación Periódica
               </Button>
               <Button
                 icon={<ReloadOutlined />}
@@ -210,7 +210,7 @@ const InstalacionLicenciaCard = ({ empresaId, suscripcionActivaId }: Props) => {
                   try {
                     setValidacion(await licensingLocalApi.validar(instalacionId, true));
                   } catch {
-                    message.warning('No hay licencia emitida aun.');
+                    message.warning('No hay licencia emitida aún.');
                   } finally {
                     setAccion(null);
                   }

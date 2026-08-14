@@ -95,14 +95,14 @@ const ReporteLicencia = () => {
   const filas = useMemo<FilaReporte[]>(() => {
     if (!instalacionId) return [];
     return [
-      { id: 'identificador', dato: 'Identificador De Instalacion', valor: String(estado?.identificadorInstalacion ?? '-') },
+      { id: 'identificador', dato: 'Identificador De Instalación', valor: String(estado?.identificadorInstalacion ?? '-') },
       { id: 'estado', dato: 'Estado', valor: String(estado?.estadoInstalacion ?? '-') },
-      { id: 'modo', dato: 'Modo De Operacion', valor: modo.texto },
+      { id: 'modo', dato: 'Modo De Operación', valor: modo.texto },
       { id: 'plan', dato: 'Plan', valor: String(licencia.planCodigo ?? '-') },
       { id: 'estado-licencia', dato: 'Estado De La Licencia', valor: String(licencia.estado ?? 'NO EMITIDA') },
       { id: 'activada', dato: 'Activada En', valor: String(estado?.activadaEn ?? '-') },
-      { id: 'vence', dato: 'Vence', valor: `${String(licencia.venceEn ?? '-')}${dias !== null ? ` (${dias} dia(s))` : ''}` },
-      { id: 'heartbeat', dato: 'Ultimo Heartbeat', valor: String(estado?.ultimoHeartbeatEn ?? '-') },
+      { id: 'vence', dato: 'Vence', valor: `${String(licencia.venceEn ?? '-')}${dias !== null ? ` (${dias} día(s))` : ''}` },
+      { id: 'heartbeat', dato: 'Última Validación Periódica', valor: String(estado?.ultimoHeartbeatEn ?? '-') },
       { id: 'eventos', dato: 'Eventos Registrados', valor: String(eventos.length) },
       { id: 'transacciones', dato: 'Transacciones Del Mes', valor: String(uso?.transaccionesProcesadas ?? 0) },
       { id: 'kyc', dato: 'Consultas KYC Del Mes', valor: String(uso?.consultasKyc ?? 0) },
@@ -128,7 +128,7 @@ const ReporteLicencia = () => {
   if (!instalacionId) {
     return (
       <Empty
-        description="Registra primero una instalacion on-premise desde Admin Empresa > Licencia On-Premise."
+        description="Registra primero una instalación on-premise desde Administrador Empresa > Licencia On-Premise."
         image={Empty.PRESENTED_IMAGE_SIMPLE}
       />
     );
@@ -155,12 +155,12 @@ const ReporteLicencia = () => {
         size="small"
         column={1}
         items={[
-          { key: 'identificador', label: 'Identificador De Instalacion', children: String(estado?.identificadorInstalacion ?? '-') },
+          { key: 'identificador', label: 'Identificador De Instalación', children: String(estado?.identificadorInstalacion ?? '-') },
           { key: 'estado', label: 'Estado', children: String(estado?.estadoInstalacion ?? '-') },
-          { key: 'modo', label: 'Modo De Operacion', children: <Tag color={modo.tag}>{modo.texto}</Tag> },
+          { key: 'modo', label: 'Modo De Operación', children: <Tag color={modo.tag}>{modo.texto}</Tag> },
           { key: 'plan', label: 'Plan', children: String(licencia.planCodigo ?? '-') },
-          { key: 'vence', label: `Vence${dias !== null ? ` (${dias} dia(s))` : ''}`, children: String(licencia.venceEn ?? '-') },
-          { key: 'detalle', label: 'Detalle De Validacion', children: String(validacion?.detalle ?? '-') },
+          { key: 'vence', label: `Vence${dias !== null ? ` (${dias} día(s))` : ''}`, children: String(licencia.venceEn ?? '-') },
+          { key: 'detalle', label: 'Detalle De Validación', children: String(validacion?.detalle ?? '-') },
         ]}
       />
       <Table

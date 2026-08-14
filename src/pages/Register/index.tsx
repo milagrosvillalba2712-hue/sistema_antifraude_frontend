@@ -56,7 +56,7 @@ const Register = () => {
           <Form.Item label="Codigo De Invitacion" name="codigoInvitacion" rules={[{ required: true, message: 'Ingresa tu codigo de invitacion' }]}>
             <Input placeholder="Codigo emitido por el administrador" autoComplete="off" />
           </Form.Item>
-          <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Ingresa tu email' }, { type: 'email', message: 'Email invalido' }]}>
+          <Form.Item label="Correo Electrónico" name="email" rules={[{ required: true, message: 'Ingresa tu correo electrónico' }, { type: 'email', message: 'Correo electrónico inválido' }]}>
             <Input placeholder="correo@ejemplo.com" autoComplete="email" />
           </Form.Item>
           <Form.Item label="Nombre Completo" name="nombre" rules={[{ required: true, message: 'Ingresa tu nombre' }]}>
@@ -66,11 +66,11 @@ const Register = () => {
             label="Contraseña"
             name="password"
             rules={[
-              { required: true, message: 'Ingresa una contrasena' },
-              { min: 10, message: 'Minimo 10 caracteres' },
+              { required: true, message: 'Ingresa una contraseña' },
+              { min: 10, message: 'Mínimo 10 caracteres' },
             ]}
           >
-            <Input.Password placeholder="Minimo 10 caracteres" autoComplete="new-password" />
+            <Input.Password placeholder="Mínimo 10 caracteres" autoComplete="new-password" />
           </Form.Item>
           <Button type="primary" htmlType="submit" block>
             Registrarme

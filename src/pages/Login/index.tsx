@@ -31,7 +31,7 @@ const Login = () => {
         </Space>
 
         <Form form={form} layout="vertical" onFinish={onSubmit} requiredMark={false}>
-          <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Ingresa tu email' }, { type: 'email', message: 'Email invalido' }]}>
+          <Form.Item label="Correo Electrónico" name="email" rules={[{ required: true, message: 'Ingresa tu correo electrónico' }, { type: 'email', message: 'Correo electrónico inválido' }]}>
             <Input placeholder="correo@ejemplo.com" autoComplete="email" />
           </Form.Item>
           <Form.Item label="Contraseña" name="password" rules={[{ required: true, message: 'Ingresa tu contraseña' }]}>
@@ -54,8 +54,8 @@ const Login = () => {
           message="Credenciales de Prueba"
           description={
             <Space direction="vertical" size={2}>
-              <Typography.Text>Admin General: ana.gimenez@regula.local</Typography.Text>
-              <Typography.Text>Admin Empresa: elena.caceres@cliente.local</Typography.Text>
+              <Typography.Text>Administrador General: ana.gimenez@regula.local</Typography.Text>
+              <Typography.Text>Administrador Empresa: elena.caceres@cliente.local</Typography.Text>
               <Typography.Text>Supervisor: hector.sosa@cliente.local</Typography.Text>
               <Typography.Text>Analista: diego.benitez@cliente.local</Typography.Text>
               <Typography.Text>Contraseña: Regula2026!</Typography.Text>

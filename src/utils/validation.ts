@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const loginSchema = z.object({
-  email: z.string().email('Email inválido'),
+  email: z.string().email('Correo electrónico inválido'),
   password: z.string().min(1, 'La contraseña es requerida'),
 });
 
@@ -21,7 +21,7 @@ export const reglaSchema = z.object({
 export const usuarioSchema = z.object({
   username: z.string().min(3, 'El nombre de usuario debe tener al menos 3 caracteres'),
   nombreCompleto: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  email: z.string().email('Email inválido'),
+  email: z.string().email('Correo electrónico inválido'),
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres').optional().or(z.literal('')),
   rol: z.enum(['ADMIN_GENERAL', 'ADMIN_EMPRESA', 'GERENTE_SUPERVISOR', 'ANALISTA', 'AUDITOR'], {
     message: 'El rol es requerido',

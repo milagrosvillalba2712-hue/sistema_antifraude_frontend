@@ -13,7 +13,7 @@ const Reports = () => {
     confirm({
       title: 'Confirmar exportacion ROS',
       description: `Se generara/exportara el reporte ROS para la alerta #${alertaId}.`,
-      detail: 'La generacion de documentos de cumplimiento queda registrada en auditoria.',
+      detail: 'La generación de documentos de cumplimiento queda registrada en auditoría.',
       confirmLabel: 'Exportar CSV',
       variant: 'warning',
       action: async () => {
@@ -60,7 +60,7 @@ const Reports = () => {
                   showIcon
                   icon={<FileTextOutlined />}
                   message="Acerca De Los Reportes ROS"
-                  description="Los reportes se generan desde alertas investigadas e incluyen alerta, transaccion, regla activada, evaluacion realizada, usuario generador y fecha/hora de generacion."
+                  description="Los reportes se generan desde alertas investigadas e incluyen alerta, transacción, regla activada, evaluación realizada, usuario generador y fecha/hora de generación."
                 />
               </Space>
             ),

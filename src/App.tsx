@@ -42,36 +42,42 @@ function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route element={<AuthenticatedLayout />}>
+            <Route path="/profile" element={<Profile />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute blockedRoles={['ADMIN_GENERAL', 'ADMIN_EMPRESA']} />}>
+          <Route element={<AuthenticatedLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/alerts/:id/resolver" element={<Alerts />} />
             <Route path="/kyc" element={<KYC />} />
             <Route path="/reports" element={<Reports />} />
-            <Route path="/profile" element={<Profile />} />
             <Route path="/motor/historial" element={<MotorHistorial />} />
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermissions={['EMPRESAS_VER']} />}>
+        <Route element={<ProtectedRoute requiredPermissions={['EMPRESAS_VER']} requiredRoles={['ADMIN_GENERAL']} />}>
           <Route element={<AuthenticatedLayout />}>
             <Route path="/admin-general" element={<AdminGeneral />} />
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermissions={['LICENCIAS_VER']} />}>
+        <Route element={<ProtectedRoute requiredPermissions={['LICENCIAS_VER']} requiredRoles={['ADMIN_EMPRESA']} />}>
           <Route element={<AuthenticatedLayout />}>
             <Route path="/admin-empresa" element={<AdminEmpresa />} />
+            <Route path="/admin-empresa/:section" element={<AdminEmpresa />} />
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermissions={['REGLAS_VER']} />}>
+        <Route element={<ProtectedRoute requiredPermissions={['REGLAS_VER']} blockedRoles={['ADMIN_GENERAL', 'ADMIN_EMPRESA']} />}>
           <Route element={<AuthenticatedLayout />}>
             <Route path="/rules" element={<Navigate to="/rule-engine" replace />} />
             <Route path="/rule-engine" element={<RuleEngine />} />
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermissions={['USUARIOS_VER']} />}>
+        <Route element={<ProtectedRoute requiredPermissions={['USUARIOS_VER']} requiredRoles={['ADMIN_EMPRESA']} />}>
           <Route element={<AuthenticatedLayout />}>
             <Route path="/users" element={<Users />} />
           </Route>

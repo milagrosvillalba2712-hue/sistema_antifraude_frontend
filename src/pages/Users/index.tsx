@@ -11,8 +11,8 @@ import { useAuthStore } from '../../store';
 import type { Usuario } from '../../types';
 
 const roleOptions = [
-  { value: 'ADMINISTRADOR', label: 'Administrador' },
-  { value: 'SUPERVISOR', label: 'Supervisor' },
+  { value: 'ADMIN_EMPRESA', label: 'Administrador Empresa' },
+  { value: 'GERENTE_SUPERVISOR', label: 'Gerente Supervisor' },
   { value: 'ANALISTA', label: 'Analista' },
   { value: 'AUDITOR', label: 'Auditor' },
 ];
@@ -59,7 +59,7 @@ const Users = () => {
         licensingApi.suscripciones(empresaId ?? null),
       ]);
       setUsers(data);
-      setEmpresas(empresasData);
+      setEmpresas(empresaId ? empresasData.filter((empresa) => String(empresa.id) === empresaId) : empresasData);
       const planId = Number((suscripciones[0] as { planId?: unknown } | undefined)?.planId ?? 0);
       if (planId) {
         const precios = await licensingApi.preciosRol(planId);
@@ -119,7 +119,7 @@ const Users = () => {
 
   const openCreate = () => {
     setEditingUser(null);
-    reset({ username: '', nombreCompleto: '', email: '', password: '', rol: 'ANALISTA', empresaId: '' });
+    reset({ username: '', nombreCompleto: '', email: '', password: '', rol: 'ANALISTA', empresaId: empresaId || '' });
     setShowForm(true);
   };
 
@@ -164,9 +164,7 @@ const Users = () => {
       title: 'Rol',
       dataIndex: 'rol',
       key: 'rol',
-      render: (rol: string) => (
-        <Tag color={rol === 'ADMINISTRADOR' ? 'gold' : 'blue'}>{rol}</Tag>
-      ),
+      render: (rol: string) => <Tag color={rol === 'ADMIN_EMPRESA' ? 'gold' : 'blue'}>{roleLabel(rol)}</Tag>,
     },
     {
       title: 'Precio Anual Adicional (USD)',
@@ -190,9 +188,9 @@ const Users = () => {
 
   const columns: ColumnsType<Usuario> = [
     { title: 'Nombre', render: (_, user) => <Typography.Text strong>{user.nombreCompleto || user.nombre}</Typography.Text> },
-    { title: 'Email', dataIndex: 'email' },
-    { title: 'Rol', dataIndex: 'rol', render: (value) => <Tag color={value === 'ADMIN_GENERAL' ? 'orange' : 'blue'}>{value}</Tag> },
-    { title: 'Empresa', render: (_, user) => user.empresaNombre || 'Global' },
+    { title: 'Correo Electrónico', dataIndex: 'email' },
+    { title: 'Rol', dataIndex: 'rol', render: (value) => <Tag color={value === 'ADMIN_EMPRESA' ? 'gold' : 'blue'}>{roleLabel(String(value))}</Tag> },
+    { title: 'Empresa', render: (_, user) => user.empresaNombre || 'Empresa actual' },
     { title: 'Estado', dataIndex: 'activo', render: (active) => <Tag color={active ? 'green' : 'red'}>{active ? 'Activo' : 'Inactivo'}</Tag> },
     { title: 'Fecha', dataIndex: 'fechaCreacion', render: (value) => formatDate(value) },
     {
@@ -221,10 +219,13 @@ const Users = () => {
       <Space style={{ width: '100%', justifyContent: 'space-between' }}>
         <div>
           <Typography.Title level={2} style={{ margin: 0 }}>Gestión de Usuarios</Typography.Title>
-          <Typography.Text type="secondary">Administra usuarios, roles y empresa asociada.</Typography.Text>
+          <Typography.Text type="secondary">Administra usuarios y roles de tu empresa. No permite usuarios globales ni Administrador General.</Typography.Text>
         </div>
         <Space>
-          <Button icon={<MailOutlined />} onClick={() => setInviteOpen(true)}>
+          <Button icon={<MailOutlined />} onClick={() => {
+            inviteForm.setFieldsValue({ empresaId: empresaId || undefined, rol: 'ANALISTA' });
+            setInviteOpen(true);
+          }}>
             Generar Invitación
           </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
@@ -248,9 +249,9 @@ const Users = () => {
         width={560}
       >
         <Form layout="vertical" onFinish={handleSubmit(onSubmit)}>
-          <Controller name="username" control={control} render={({ field }) => <Form.Item label="Username" validateStatus={errors.username ? 'error' : undefined} help={errors.username?.message}><Input {...field} placeholder="Nombre de usuario" /></Form.Item>} />
+          <Controller name="username" control={control} render={({ field }) => <Form.Item label="Usuario" validateStatus={errors.username ? 'error' : undefined} help={errors.username?.message}><Input {...field} placeholder="Nombre de usuario" /></Form.Item>} />
           <Controller name="nombreCompleto" control={control} render={({ field }) => <Form.Item label="Nombre Completo" validateStatus={errors.nombreCompleto ? 'error' : undefined} help={errors.nombreCompleto?.message}><Input {...field} placeholder="Nombre completo del usuario" /></Form.Item>} />
-          <Controller name="email" control={control} render={({ field }) => <Form.Item label="Email" validateStatus={errors.email ? 'error' : undefined} help={errors.email?.message}><Input {...field} type="email" placeholder="correo@ejemplo.com" /></Form.Item>} />
+          <Controller name="email" control={control} render={({ field }) => <Form.Item label="Correo Electrónico" validateStatus={errors.email ? 'error' : undefined} help={errors.email?.message}><Input {...field} type="email" placeholder="correo@ejemplo.com" /></Form.Item>} />
           <Controller name="password" control={control} render={({ field }) => <Form.Item label={editingUser ? 'Nueva Contraseña' : 'Contraseña'} validateStatus={errors.password ? 'error' : undefined} help={errors.password?.message || (editingUser ? 'Dejar vacío para mantener la actual.' : undefined)}><Input.Password {...field} placeholder="Contraseña" /></Form.Item>} />
           <Controller name="rol" control={control} render={({ field }) => (
             <Form.Item
@@ -266,11 +267,11 @@ const Users = () => {
             name="empresaId"
             control={control}
             render={({ field }) => (
-              <Form.Item label="Empresa" extra="Admin General puede quedar global; los demas roles deben asignarse a una empresa.">
+              <Form.Item label="Empresa" extra="Los usuarios creados desde Admin Empresa quedan asociados a la empresa actual.">
                 <Select
                   {...field}
-                  allowClear
-                  placeholder="Global / Sin empresa"
+                  disabled={Boolean(empresaId)}
+                  placeholder="Empresa actual"
                   options={empresas.map((empresa) => ({ value: String(empresa.id), label: `${String(empresa.codigo ?? empresa.id)} - ${String(empresa.nombre ?? '')}` }))}
                 />
               </Form.Item>
@@ -326,10 +327,11 @@ const Users = () => {
             <Form.Item label="Empresa" name="empresaId" rules={[{ required: true, message: 'Selecciona una empresa' }]}>
               <Select
                 placeholder="Empresa destino"
+                disabled={Boolean(empresaId)}
                 options={empresas.map((empresa) => ({ value: String(empresa.id), label: `${String(empresa.codigo ?? empresa.id)} - ${String(empresa.nombre ?? '')}` }))}
               />
             </Form.Item>
-            <Form.Item label="Email (opcional)" name="email" rules={[{ type: 'email', message: 'Email invalido' }]}>
+            <Form.Item label="Correo Electrónico (opcional)" name="email" rules={[{ type: 'email', message: 'Correo electrónico inválido' }]}>
               <Input placeholder="correo@ejemplo.com" />
             </Form.Item>
           </Form>
@@ -340,5 +342,7 @@ const Users = () => {
     </Space>
   );
 };
+
+const roleLabel = (rol: string) => roleOptions.find((option) => option.value === rol)?.label || rol;
 
 export default Users;

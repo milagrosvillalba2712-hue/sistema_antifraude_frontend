@@ -15,25 +15,52 @@ import {
   SettingOutlined,
   TeamOutlined,
   UserOutlined,
+  ApiOutlined,
+  CloudSyncOutlined,
+  CreditCardOutlined,
+  DatabaseOutlined,
 } from '@ant-design/icons';
 import { Avatar, Badge, Button, Drawer, Grid, Layout, Menu, Space, Typography } from 'antd';
 import { useAuthStore } from '../store';
 import { RegulaIcon } from '../components/common';
-import { BannerLicencia } from '../components/licencia';
 import { alertsApi } from '../api';
+
+interface NavigationItem {
+  key: string;
+  name: string;
+  icon: React.ReactNode;
+  permission?: string;
+  badge?: boolean;
+}
 
 const { Header, Sider, Content } = Layout;
 
-const navigation = [
-  { key: '/admin-general', name: 'Admin General', icon: <BankOutlined />, permission: 'EMPRESAS_VER' },
-  { key: '/admin-empresa', name: 'Admin Empresa', icon: <SafetyCertificateOutlined />, permission: 'LICENCIAS_VER' },
-  { key: '/dashboard', name: 'Dashboard', icon: <BarChartOutlined />, permission: 'ALERTAS_VER' },
+const operationalNavigation: NavigationItem[] = [
+  { key: '/admin-general', name: 'Administrador General', icon: <BankOutlined />, permission: 'EMPRESAS_VER' },
+  { key: '/admin-empresa', name: 'Administrador Empresa', icon: <SafetyCertificateOutlined />, permission: 'LICENCIAS_VER' },
+  { key: '/dashboard', name: 'Tablero', icon: <BarChartOutlined />, permission: 'ALERTAS_VER' },
   { key: '/alerts', name: 'Alertas', icon: <AlertOutlined />, permission: 'ALERTAS_VER', badge: true },
   { key: '/rule-engine', name: 'Motor de Reglas', icon: <AuditOutlined />, permission: 'REGLAS_VER' },
   { key: '/motor/historial', name: 'Motor Historial', icon: <HistoryOutlined />, permission: 'AUDITORIA_VER' },
   { key: '/kyc', name: 'KYC', icon: <SearchOutlined />, permission: 'ALERTAS_VER' },
   { key: '/reports', name: 'Reportes', icon: <FileTextOutlined />, permission: 'REPORTES_VER' },
   { key: '/users', name: 'Usuarios', icon: <TeamOutlined />, permission: 'USUARIOS_VER' },
+  { key: '/profile', name: 'Mi Perfil', icon: <UserOutlined /> },
+];
+
+const adminEmpresaNavigation: NavigationItem[] = [
+  { key: '/admin-empresa', name: 'Tablero', icon: <BarChartOutlined />, permission: 'LICENCIAS_VER' },
+  { key: '/admin-empresa/licencia-pagos', name: 'Licencia y Pagos', icon: <CreditCardOutlined />, permission: 'LICENCIAS_VER' },
+  { key: '/admin-empresa/consumo', name: 'Consumo', icon: <DatabaseOutlined />, permission: 'LICENCIAS_VER' },
+  { key: '/admin-empresa/apis', name: 'APIs y Conectividad', icon: <ApiOutlined />, permission: 'LICENCIAS_VER' },
+  { key: '/admin-empresa/configuracion', name: 'Configuración Local', icon: <CloudSyncOutlined />, permission: 'LICENCIAS_VER' },
+  { key: '/admin-empresa/auditoria', name: 'Auditoría Local', icon: <HistoryOutlined />, permission: 'AUDITORIA_VER' },
+  { key: '/users', name: 'Usuarios', icon: <TeamOutlined />, permission: 'USUARIOS_VER' },
+  { key: '/profile', name: 'Mi Perfil', icon: <UserOutlined /> },
+];
+
+const adminGeneralNavigation: NavigationItem[] = [
+  { key: '/admin-general', name: 'Tablero Central', icon: <BankOutlined />, permission: 'EMPRESAS_VER' },
   { key: '/profile', name: 'Mi Perfil', icon: <UserOutlined /> },
 ];
 
@@ -46,16 +73,30 @@ export const AuthenticatedLayout = () => {
   const navigate = useNavigate();
   const { user, hasPermission } = useAuthStore();
 
+  const baseNavigation = user?.rol === 'ADMIN_EMPRESA'
+    ? adminEmpresaNavigation
+    : user?.rol === 'ADMIN_GENERAL'
+      ? adminGeneralNavigation
+      : operationalNavigation.filter((item) => !['/admin-general', '/admin-empresa'].includes(item.key));
+
   const filteredNavigation = useMemo(
-    () => navigation.filter((item) => !item.permission || hasPermission(item.permission as never)),
-    [hasPermission]
+    () => baseNavigation.filter((item) => !item.permission || hasPermission(item.permission as never)),
+    [baseNavigation, hasPermission]
   );
 
   const selectedKey = useMemo(() => {
     if (location.pathname.startsWith('/alerts')) return '/alerts';
     if (location.pathname === '/rules') return '/rule-engine';
-    return filteredNavigation.find((item) => location.pathname.startsWith(item.key))?.key || location.pathname;
+    const sorted = [...filteredNavigation].sort((a, b) => b.key.length - a.key.length);
+    return sorted.find((item) => location.pathname === item.key || location.pathname.startsWith(`${item.key}/`))?.key || location.pathname;
   }, [filteredNavigation, location.pathname]);
+
+  const selectedItemName = filteredNavigation.find((item) => item.key === selectedKey)?.name || 'Tablero';
+  const homePath = user?.rol === 'ADMIN_EMPRESA'
+    ? '/admin-empresa'
+    : user?.rol === 'ADMIN_GENERAL'
+      ? '/admin-general'
+      : '/dashboard';
 
   const menuItems = filteredNavigation.map((item) => ({
     key: item.key,
@@ -93,12 +134,12 @@ export const AuthenticatedLayout = () => {
   const userInitial = user?.email?.charAt(0).toUpperCase() || 'U';
 
   const brand = (
-    <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 56, color: '#fff' }}>
+    <Link to={homePath} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 56, color: '#fff' }}>
       <RegulaIcon size={36} />
       {!collapsed && (
         <div style={{ minWidth: 0 }}>
           <Typography.Text style={{ color: '#fff', display: 'block', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>Regula</Typography.Text>
-          <Typography.Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11 }}>Risk Platform</Typography.Text>
+          <Typography.Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11 }}>Plataforma De Riesgo</Typography.Text>
         </div>
       )}
     </Link>
@@ -166,8 +207,8 @@ export const AuthenticatedLayout = () => {
         <Header style={{ position: 'sticky', top: 0, zIndex: 90, display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingInline: 24, borderBottom: '1px solid #f0f0f0' }}>
           <Space>
             {!screens.lg && <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerOpen(true)} />}
-            <Typography.Text type="secondary">Monitoring Platform</Typography.Text>
-            <Typography.Text strong>{selectedKey === '/alerts' ? 'Alertas' : 'Dashboard'}</Typography.Text>
+            <Typography.Text type="secondary">Plataforma De Monitoreo</Typography.Text>
+            <Typography.Text strong>{selectedItemName}</Typography.Text>
           </Space>
           <Space>
             <Badge dot={unassignedAlerts > 0}>
@@ -177,7 +218,6 @@ export const AuthenticatedLayout = () => {
           </Space>
         </Header>
         <Content style={{ padding: 24, minHeight: 'calc(100vh - 64px)' }}>
-          <BannerLicencia />
           <Outlet />
         </Content>
       </Layout>

@@ -71,7 +71,7 @@ const Dashboard = () => {
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <Space align="end" style={{ width: '100%', justifyContent: 'space-between' }}>
         <div>
-          <Typography.Title level={2} style={{ marginBottom: 0 }}>Dashboard</Typography.Title>
+          <Typography.Title level={2} style={{ marginBottom: 0 }}>Tablero</Typography.Title>
           <Typography.Text type="secondary">Monitoreo operativo del sistema antifraude.</Typography.Text>
         </div>
         <Button icon={<ReloadOutlined />} onClick={fetchData}>Actualizar</Button>
@@ -81,7 +81,7 @@ const Dashboard = () => {
 
       <Row gutter={[16, 16]}>
         <Metric title="Total Alertas 24h" value={(data?.alertasPendientes || 0) + (data?.alertasResueltas || 0)} icon={<AlertOutlined />} loading={loading} />
-        <Metric title="Casos Criticos" value={data?.transaccionesSospechosas || 0} icon={<WarningOutlined />} loading={loading} color="#ba1a1a" />
+        <Metric title="Casos Críticos" value={data?.transaccionesSospechosas || 0} icon={<WarningOutlined />} loading={loading} color="#ba1a1a" />
         <Metric title="Casos Resueltos" value={data?.alertasResueltas || 0} icon={<CheckCircleOutlined />} loading={loading} />
         <Metric title="Score Riesgo Promedio" value={Number(data?.promedioScoreRiesgo || 0).toFixed(1)} icon={<ThunderboltOutlined />} loading={loading} />
       </Row>

@@ -23,7 +23,7 @@ const ForgotPassword = () => {
         <Result
           status="success"
           title="Solicitud Enviada"
-          subTitle="Si el email esta registrado, recibiras un enlace para restablecer tu contrasena (en modo demo tambien se imprime en consola del backend)."
+          subTitle="Si el correo electrónico está registrado, recibirás un enlace para restablecer tu contraseña. En modo demo también se imprime en consola del Backend."
           extra={
             <Link to="/login">
               <Button type="primary">Volver Al Login</Button>
@@ -46,7 +46,7 @@ const ForgotPassword = () => {
         </Space>
 
         <Form form={form} layout="vertical" onFinish={onSubmit} requiredMark={false}>
-          <Form.Item label="Email" name="email" rules={[{ required: true, message: 'Ingresa tu email' }, { type: 'email', message: 'Email invalido' }]}>
+          <Form.Item label="Correo Electrónico" name="email" rules={[{ required: true, message: 'Ingresa tu correo electrónico' }, { type: 'email', message: 'Correo electrónico inválido' }]}>
             <Input placeholder="correo@ejemplo.com" autoComplete="email" />
           </Form.Item>
           <Button type="primary" htmlType="submit" block>

@@ -71,7 +71,7 @@ type RuleDraft = {
 };
 
 const fallbackFacts: RuleFactDefinition[] = [
-  { fact: 'monto', etiqueta: 'Monto de la transaccion', tipo: 'NUMERICO', catalogo: null, operadores: ['>', '>=', '<', '<=', 'between'] },
+  { fact: 'monto', etiqueta: 'Monto de la transacción', tipo: 'NUMERICO', catalogo: null, operadores: ['>', '>=', '<', '<=', 'between'] },
   { fact: 'moneda', etiqueta: 'Moneda', tipo: 'CATALOGO', catalogo: 'moneda', operadores: ['==', '!=', 'in'] },
   { fact: 'canal', etiqueta: 'Canal utilizado', tipo: 'CATALOGO', catalogo: 'canal_transaccion', operadores: ['==', '!=', 'in'] },
   { fact: 'paisOrigen', etiqueta: 'País de origen', tipo: 'CATALOGO', catalogo: 'pais', operadores: ['==', '!=', 'in'] },
@@ -97,14 +97,14 @@ const sectionDescriptions: Record<Tab, string> = {
   reglas: 'Consulta, filtra y administra reglas activas, inactivas o en borrador.',
   entidades: 'Gestiona entidades y catálogos que alimentan reglas, escenarios, acciones y controles.',
   constructor: 'Crea reglas guiadas seleccionando datos, operadores entendibles y valores dinamicos.',
-  simulador: 'Prueba una transaccion contra reglas activas para validar score, nivel y acciones sugeridas.',
+  simulador: 'Prueba una transacción contra reglas activas para validar score, nivel y acciones sugeridas.',
 };
 
 const entityDescriptions: Record<string, string> = {
   accion: 'Acciones sugeridas o ejecutables por el motor de reglas.',
   escenario: 'Agrupa reglas por contexto antifraude.',
-  pais: 'Catalogo de paises usado por transacciones, KYC y reglas.',
-  moneda: 'Catalogo de monedas usadas en transacciones y controles.',
+  pais: 'Catálogo de países usado por transacciones, KYC y reglas.',
+  moneda: 'Catálogo de monedas usadas en transacciones y controles.',
   canal: 'Canales de operacion como web, movil, sucursal o API.',
   producto: 'Productos financieros evaluados por el sistema.',
   tipo_documento: 'Tipos de documento para KYC y personas.',
@@ -266,7 +266,7 @@ const RuleEngine = () => {
     confirm({
       title: formMode === 'create' ? 'Confirmar Creación' : 'Confirmar Edición',
       description: formMode === 'create' ? `Se creara un registro en ${schema.table}.` : `Se actualizara el registro #${String(formData.id)} de ${schema.table}.`,
-      detail: 'Esta accion quedara registrada en auditoria.',
+      detail: 'Esta acción quedará registrada en auditoría.',
       confirmLabel: formMode === 'create' ? 'Crear' : 'Guardar',
       action: async () => {
         setSaving(true);
@@ -292,7 +292,7 @@ const RuleEngine = () => {
     confirm({
       title: 'Confirmar Eliminación',
       description: `Se eliminara el registro #${String(row.id)} de ${schema.table}.`,
-      detail: 'Esta accion puede fallar si el registro tiene relaciones.',
+      detail: 'Esta acción puede fallar si el registro tiene relaciones.',
       confirmLabel: 'Eliminar',
       variant: 'critical',
       action: async () => {

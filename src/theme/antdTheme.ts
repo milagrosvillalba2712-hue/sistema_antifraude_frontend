@@ -31,6 +31,30 @@ export const regulaTheme: ThemeConfig = {
       headerColor: '#4e616e',
       rowHoverBg: '#f7f9fc',
     },
+    Button: {
+      borderRadius: 8,
+      primaryShadow: 'none',
+    },
+    Input: {
+      borderRadius: 8,
+      activeShadow: '0 0 0 2px rgba(222,116,38,0.12)',
+    },
+    Select: {
+      borderRadius: 8,
+    },
+    Tabs: {
+      itemSelectedColor: '#de7426',
+      inkBarColor: '#de7426',
+    },
+    Alert: {
+      borderRadiusLG: 10,
+    },
+    Drawer: {
+      colorBgElevated: '#ffffff',
+    },
+    Descriptions: {
+      labelBg: '#f7f9fc',
+    },
     Modal: {
       borderRadiusLG: 10,
     },

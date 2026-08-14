@@ -17,7 +17,7 @@ const KYC = () => {
     confirm({
       title: 'Confirmar consulta KYC',
       description: `Se consultara informacion KYC del documento ${values.identificadorDocumento}.`,
-      detail: 'Esta consulta sensible quedara registrada en auditoria.',
+      detail: 'Esta consulta sensible quedará registrada en auditoría.',
       confirmLabel: 'Consultar',
       variant: 'warning',
       action: async () => {

@@ -33,7 +33,7 @@ const Profile = () => {
     confirmPassword: string;
   }) => {
     if (values.nuevaPassword !== values.confirmPassword) {
-      message.error('Las contrasenas no coinciden.');
+      message.error('Las contraseñas no coinciden.');
       return;
     }
     try {
@@ -41,7 +41,7 @@ const Profile = () => {
       message.success('Contrasena actualizada correctamente.');
       passwordForm.resetFields();
     } catch (error: unknown) {
-      message.error(error instanceof Error ? error.message : 'No se pudo actualizar la contrasena');
+      message.error(error instanceof Error ? error.message : 'No se pudo actualizar la contraseña');
     }
   };
 
@@ -116,10 +116,10 @@ const Profile = () => {
                   motivo: values.motivo,
                 };
                 confirm({
-                  title: 'Confirmar programacion',
-                  description: `Se creara una programacion de disponibilidad ${payload.tipoEstado}.`,
+                  title: 'Confirmar Programación',
+                  description: `Se creará una programación de disponibilidad ${payload.tipoEstado}.`,
                   detail: payload.motivo || 'Sin motivo cargado.',
-                  confirmLabel: 'Crear programacion',
+                  confirmLabel: 'Crear Programación',
                   action: async () => {
                     await createSchedule(payload);
                     scheduleForm.resetFields();
@@ -136,33 +136,33 @@ const Profile = () => {
               <Form.Item label="Motivo" name="motivo">
                 <Input.TextArea rows={3} placeholder="Motivo visible para supervisores o asignaciones" />
               </Form.Item>
-              <Button type="primary" htmlType="submit">Crear Programacion</Button>
+              <Button type="primary" htmlType="submit">Crear Programación</Button>
             </Form>
           </Card>
 
           <Card title={<Space><KeyOutlined />Cambiar Contraseña</Space>}>
             <Form form={passwordForm} layout="vertical" onFinish={handleChangePassword}>
-              <Form.Item label="Contraseña Actual" name="passwordActual" rules={[{ required: true, message: 'Ingresa tu contrasena actual' }]}>
+              <Form.Item label="Contraseña Actual" name="passwordActual" rules={[{ required: true, message: 'Ingresa tu contraseña actual' }]}>
                 <Input.Password placeholder="Contraseña actual" autoComplete="current-password" />
               </Form.Item>
               <Form.Item
                 label="Nueva Contraseña"
                 name="nuevaPassword"
-                rules={[{ required: true, message: 'Ingresa la nueva contrasena' }, { min: 10, message: 'Minimo 10 caracteres' }]}
+                rules={[{ required: true, message: 'Ingresa la nueva contraseña' }, { min: 10, message: 'Mínimo 10 caracteres' }]}
               >
-                <Input.Password placeholder="Minimo 10 caracteres" autoComplete="new-password" />
+                <Input.Password placeholder="Mínimo 10 caracteres" autoComplete="new-password" />
               </Form.Item>
               <Form.Item
                 label="Confirmar Nueva Contraseña"
                 name="confirmPassword"
-                rules={[{ required: true, message: 'Confirma la nueva contrasena' }]}
+                rules={[{ required: true, message: 'Confirma la nueva contraseña' }]}
               >
-                <Input.Password placeholder="Repite la nueva contrasena" autoComplete="new-password" />
+                <Input.Password placeholder="Repite la nueva contraseña" autoComplete="new-password" />
               </Form.Item>
               <Alert
                 type="info"
                 showIcon
-                message="Al cambiar la contrasena se invalidan las sesiones previas."
+                message="Al cambiar la contraseña se invalidan las sesiones previas."
                 style={{ marginBottom: 16 }}
               />
               <Button type="primary" htmlType="submit">Actualizar Contraseña</Button>
@@ -174,17 +174,17 @@ const Profile = () => {
           <Card title="Estado Actual">
             <Space direction="vertical" style={{ width: '100%' }}>
               <Tag color={profile.estado === 'DISPONIBLE' ? 'green' : 'orange'}>{labelFor(profile.estado || 'NO_DISPONIBLE')}</Tag>
-              <Typography.Text type="secondary">Ultima actualizacion: {profile.ultimaActualizacionEstado ? formatDate(profile.ultimaActualizacionEstado) : '-'}</Typography.Text>
+              <Typography.Text type="secondary">Última Actualización: {profile.ultimaActualizacionEstado ? formatDate(profile.ultimaActualizacionEstado) : '-'}</Typography.Text>
               <Select
                 value={profile.estado}
                 style={{ width: '100%' }}
                 options={statusOptions.map((status) => ({ value: status, label: labelFor(status) }))}
                 onChange={(status) => {
                   confirm({
-                    title: 'Confirmar cambio de estado',
-                    description: `Tu estado cambiara a ${labelFor(status)}.`,
-                    detail: 'Esta accion quedara registrada en auditoria.',
-                    confirmLabel: 'Cambiar estado',
+                    title: 'Confirmar Cambio De Estado',
+                    description: `Tu estado cambiará a ${labelFor(status)}.`,
+                    detail: 'Esta acción quedará registrada en auditoría.',
+                    confirmLabel: 'Cambiar Estado',
                     action: async () => updateStatus(status),
                   });
                 }}
@@ -205,10 +205,10 @@ const Profile = () => {
                       icon={<DeleteOutlined />}
                       onClick={() => {
                         confirm({
-                          title: 'Confirmar cancelacion',
-                          description: `Se cancelara la programacion #${item.id}.`,
-                          detail: 'La programacion dejara de estar activa.',
-                          confirmLabel: 'Cancelar programacion',
+                          title: 'Confirmar Cancelación',
+                          description: `Se cancelará la programación #${item.id}.`,
+                          detail: 'La programación dejará de estar activa.',
+                          confirmLabel: 'Cancelar Programación',
                           variant: 'warning',
                           action: async () => cancelSchedule(item.id),
                         });

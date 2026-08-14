@@ -68,14 +68,18 @@ const Dashboard = () => {
   ], [data]);
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
-      <Space align="end" style={{ width: '100%', justifyContent: 'space-between' }}>
+    <Space className="observability-dashboard" direction="vertical" size="middle">
+      <div className="observability-toolbar">
         <div>
+          <div className="observability-kicker">Monitoreo Antifraude</div>
           <Typography.Title level={2} style={{ marginBottom: 0 }}>Tablero</Typography.Title>
           <Typography.Text type="secondary">Monitoreo operativo del sistema antifraude.</Typography.Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={fetchData}>Actualizar</Button>
-      </Space>
+        <Space wrap>
+          <Tag color="processing">Tiempo Real</Tag>
+          <Button icon={<ReloadOutlined />} onClick={fetchData}>Actualizar</Button>
+        </Space>
+      </div>
 
       {error && <Alert type="error" showIcon message={error} action={<Button size="small" onClick={fetchData}>Reintentar</Button>} />}
 
@@ -88,7 +92,7 @@ const Dashboard = () => {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} xl={16}>
-          <Card title={<Space><DashboardOutlined />Actividad Reciente</Space>} extra={<Tag color="processing">Tiempo real</Tag>}>
+          <Card title={<Space><DashboardOutlined />Actividad Reciente</Space>} extra={<Tag color="processing">Tiempo Real</Tag>}>
             <Table
               rowKey="key"
               size="middle"
@@ -134,9 +138,9 @@ const Dashboard = () => {
             <div style={{ width: '100%', height: 300 }}>
               <ResponsiveContainer>
                 <LineChart data={scoreData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#25323a" />
+                  <XAxis dataKey="name" stroke="#9fb0ba" />
+                  <YAxis stroke="#9fb0ba" />
                   <Tooltip />
                   <Line type="monotone" dataKey="score" stroke="#de7426" strokeWidth={3} />
                 </LineChart>

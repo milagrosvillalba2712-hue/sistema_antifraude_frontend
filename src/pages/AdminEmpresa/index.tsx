@@ -240,7 +240,18 @@ const DashboardAdmin = ({ loading, licencia, plan, summary, apiResumen, errores,
   const filteredErrorTelemetry = useMemo(() => filterRowsByTimeRange(errorTelemetry, 'fecha', errorRange), [errorRange, errorTelemetry]);
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space className="observability-dashboard" direction="vertical" size="middle">
+      <div className="observability-toolbar">
+        <div>
+          <div className="observability-kicker">Monitoreo Local</div>
+          <Typography.Text>APIs, licencia, consumo y salud técnica de la empresa.</Typography.Text>
+        </div>
+        <Space wrap>
+          <Tag color={stringValue(licencia.estado) === 'ACTIVA' ? 'success' : 'warning'}>{stringValue(licencia.estado) || 'Sin Licencia'}</Tag>
+          <Tag color="processing">{stringValue(plan.nombre) || 'Sin Plan'}</Tag>
+          <Button size="small" icon={<ReloadOutlined />} onClick={onReloadDashboard} loading={loading}>Actualizar</Button>
+        </Space>
+      </div>
       <Row gutter={[16, 16]}>
         <Metric title="Carga De Base De Datos" value={`${numberValue(database.loadPercent)}%`} icon={<DatabaseOutlined />} loading={loading} />
         <Metric title="Latencia De APIs" value={`${numberValue(latency.avgMs)}ms`} icon={<ApiOutlined />} loading={loading} />

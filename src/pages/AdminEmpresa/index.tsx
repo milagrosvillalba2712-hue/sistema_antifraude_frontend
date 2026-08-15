@@ -228,7 +228,7 @@ const DashboardAdmin = ({ loading, licencia, plan, summary, apiResumen, errores,
   errores: Record<string, unknown>;
   systemOverview: Record<string, unknown>;
   onReloadDashboard: () => Promise<void>;
-  onReloadErrors: (filters?: { status?: string; desde?: string; hasta?: string }) => Promise<void>;
+  onReloadErrors: (filters?: { status?: string; origen?: string; desde?: string; hasta?: string }) => Promise<void>;
 }) => {
   const database = asRecord(systemOverview.database);
   const latency = asRecord(systemOverview.apiLatency);
@@ -315,34 +315,37 @@ const DashboardAdmin = ({ loading, licencia, plan, summary, apiResumen, errores,
 const ErrorMonitor = ({ loading, errores, onReload }: {
   loading: boolean;
   errores: Record<string, unknown>;
-  onReload: (filters?: { status?: string; desde?: string; hasta?: string }) => Promise<void>;
+  onReload: (filters?: { status?: string; origen?: string; desde?: string; hasta?: string }) => Promise<void>;
 }) => {
   const [status, setStatus] = useState('TODOS');
-  const [range, setRange] = useState<TimeRangeSelection>({ type: 'relative', key: '1h' });
+  const [origen, setOrigen] = useState('TODOS');
+  const [range, setRange] = useState<TimeRangeSelection>({ type: 'relative', key: '24h' });
   const [reloading, setReloading] = useState(false);
-  const internas = useMemo(() => arrayValue(errores.internas), [errores]);
-  const externas = useMemo(() => arrayValue(errores.externas), [errores]);
   const eventosRecientes = useMemo(() => arrayValue(errores.eventosRecientes), [errores]);
+  const origenes = useMemo(() => {
+    const fromApi = Array.isArray(errores.origenes) ? errores.origenes.map(String) : [];
+    const fromRows = eventosRecientes
+      .map((row) => row.origen)
+      .filter((value) => value !== null && value !== undefined)
+      .map(String);
+    return Array.from(new Set([...fromApi, ...fromRows])).sort((a, b) => a.localeCompare(b));
+  }, [errores, eventosRecientes]);
   const statusCodes = useMemo(() => {
     const fromApi = Array.isArray(errores.statusCodes) ? errores.statusCodes.map(String) : [];
-    const fromRows = [...internas, ...externas, ...eventosRecientes]
+    const fromRows = eventosRecientes
       .map((row) => row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp)
       .filter((value) => value !== null && value !== undefined)
       .map(String);
     return Array.from(new Set([...fromApi, ...fromRows])).sort((a, b) => Number(a) - Number(b));
-  }, [errores, internas, externas, eventosRecientes]);
+  }, [errores, eventosRecientes]);
 
-  const filterRows = (rows: Record<string, unknown>[]) => rows.filter((row) => {
-    const rowStatus = String(row.status_code ?? row.status_http ?? row.statusCode ?? row.statusHttp ?? '');
-    return status === 'TODOS' || rowStatus === status;
-  });
-
-  const reloadWith = async (nextStatus = status, nextRange = range) => {
+  const reloadWith = async (nextStatus = status, nextOrigen = origen, nextRange = range) => {
     const { desde, hasta } = rangeToApiParams(nextRange);
     setReloading(true);
     try {
       await onReload({
         status: nextStatus === 'TODOS' ? undefined : nextStatus,
+        origen: nextOrigen === 'TODOS' ? undefined : nextOrigen,
         desde,
         hasta,
       });
@@ -354,7 +357,7 @@ const ErrorMonitor = ({ loading, errores, onReload }: {
 
   return (
     <Card
-      title="Monitor De Errores De APIs"
+      title="Eventos"
       loading={loading}
       extra={(
         <Space wrap>
@@ -362,21 +365,34 @@ const ErrorMonitor = ({ loading, errores, onReload }: {
           <Select
             size="small"
             value={status}
-            style={{ width: 150 }}
+            style={{ width: 140 }}
             onChange={(nextStatus) => {
               setStatus(nextStatus);
-              void reloadWith(nextStatus, range);
+              void reloadWith(nextStatus, origen, range);
             }}
             options={[
               { value: 'TODOS', label: 'Todos HTTP' },
               ...statusCodes.map((code) => ({ value: code, label: `HTTP ${code}` })),
             ]}
           />
+          <Select
+            size="small"
+            value={origen}
+            style={{ width: 170 }}
+            onChange={(nextOrigen) => {
+              setOrigen(nextOrigen);
+              void reloadWith(status, nextOrigen, range);
+            }}
+            options={[
+              { value: 'TODOS', label: 'Todos Origenes' },
+              ...origenes.map((value) => ({ value, label: value })),
+            ]}
+          />
           <TimeRangeControls
             value={range}
             onChange={(nextRange) => {
               setRange(nextRange);
-              void reloadWith(status, nextRange);
+              void reloadWith(status, origen, nextRange);
             }}
             onRefresh={reload}
             loading={reloading}
@@ -385,55 +401,35 @@ const ErrorMonitor = ({ loading, errores, onReload }: {
         </Space>
       )}
     >
-      <Space direction="vertical" style={{ width: '100%' }} size="middle">
-        <Row gutter={[16, 16]}>
-          <Col xs={24} xl={12}>
-            <ApiErrorTable title="Errores De APIs Propias" rows={filterRows(internas)} loading={loading} />
-          </Col>
-          <Col xs={24} xl={12}>
-            <ApiErrorTable title="Errores De APIs Externas" rows={filterRows(externas)} loading={loading} />
-          </Col>
-        </Row>
-        <ApiErrorTable
-          title="Eventos"
-          rows={filterRows(eventosRecientes)}
-          loading={loading}
-          compact
-        />
-      </Space>
+      <ApiErrorTable rows={eventosRecientes} loading={loading} />
     </Card>
   );
 };
 
-const ApiErrorTable = ({ title, rows, loading, compact = false }: {
-  title: string;
+const ApiErrorTable = ({ rows, loading }: {
   rows: Record<string, unknown>[];
   loading: boolean;
-  compact?: boolean;
 }) => (
-  <Card title={title} size="small">
-    <Table
-      rowKey={(row, index) => String(row.id ?? `${row.origen ?? ''}-${row.codigo_error ?? row.codigo ?? row.codigoError ?? index}`)}
-      columns={[
-        { title: 'Fecha', dataIndex: 'fecha', width: 180, render: (_, row) => formatValue(resolveApiDate(row)) },
-        { title: 'Origen', dataIndex: 'origen', ellipsis: true, render: (value) => formatValue(cleanApiOrigin(value)) },
-        { title: 'Código', dataIndex: 'codigo_error', ellipsis: true, render: (_, row) => formatValue(row.codigo_error ?? row.codigo) },
-        {
-          title: 'HTTP',
-          dataIndex: 'status_code',
-          width: 90,
-          render: (value, row) => <StatusTag value={value ?? row.status_http ?? row.statusCode ?? row.statusHttp} />,
-        },
-        { title: 'Significado', dataIndex: 'mensaje', ellipsis: true, render: formatValue },
-        ...(compact ? [{ title: 'Fuente', dataIndex: 'fuente', ellipsis: true, render: formatValue }] : []),
-      ]}
-      dataSource={rows}
-      loading={loading}
-      pagination={{ pageSize: compact ? 5 : 6, showSizeChanger: false }}
-      size="small"
-      scroll={{ x: true }}
-    />
-  </Card>
+  <Table
+    rowKey={(row, index) => String(row.id ?? `${row.origen ?? ''}-${row.codigo_error ?? row.codigo ?? row.codigoError ?? index}`)}
+    columns={[
+      { title: 'Fecha', dataIndex: 'fecha', width: 180, render: (_, row) => formatValue(resolveApiDate(row)) },
+      { title: 'Origen', dataIndex: 'origen', ellipsis: true, render: (value) => formatValue(cleanApiOrigin(value)) },
+      { title: 'Código', dataIndex: 'codigo_error', ellipsis: true, render: (_, row) => formatValue(row.codigo_error ?? row.codigo) },
+      {
+        title: 'HTTP',
+        dataIndex: 'status_code',
+        width: 90,
+        render: (value, row) => <StatusTag value={value ?? row.status_http ?? row.statusCode ?? row.statusHttp} />,
+      },
+      { title: 'Significado', dataIndex: 'mensaje', ellipsis: true, render: formatValue },
+    ]}
+    dataSource={rows}
+    loading={loading}
+    pagination={{ pageSize: 10, showSizeChanger: true }}
+    size="small"
+    scroll={{ x: true, y: 420 }}
+  />
 );
 
 const StatusTag = ({ value }: { value: unknown }) => {
@@ -877,6 +873,8 @@ const emptyErrores = (): Record<string, unknown> => ({
   internas: [],
   externas: [],
   eventosExternos: [],
+  eventosRecientes: [],
+  origenes: [],
   statusCodes: [],
 });
 

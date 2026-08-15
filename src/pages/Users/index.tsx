@@ -11,8 +11,8 @@ import { useAuthStore } from '../../store';
 import type { Usuario } from '../../types';
 
 const roleOptions = [
-  { value: 'ADMIN_EMPRESA', label: 'Administrador Empresa' },
-  { value: 'GERENTE_SUPERVISOR', label: 'Gerente Supervisor' },
+  { value: 'ADMINISTRADOR', label: 'Administrador' },
+  { value: 'SUPERVISOR', label: 'Supervisor' },
   { value: 'ANALISTA', label: 'Analista' },
   { value: 'AUDITOR', label: 'Auditor' },
 ];
@@ -164,7 +164,7 @@ const Users = () => {
       title: 'Rol',
       dataIndex: 'rol',
       key: 'rol',
-      render: (rol: string) => <Tag color={rol === 'ADMIN_EMPRESA' ? 'gold' : 'blue'}>{roleLabel(rol)}</Tag>,
+      render: (rol: string) => <Tag color={rol === 'ADMINISTRADOR' ? 'gold' : 'blue'}>{roleLabel(rol)}</Tag>,
     },
     {
       title: 'Precio Anual Adicional (USD)',
@@ -189,7 +189,7 @@ const Users = () => {
   const columns: ColumnsType<Usuario> = [
     { title: 'Nombre', render: (_, user) => <Typography.Text strong>{user.nombreCompleto || user.nombre}</Typography.Text> },
     { title: 'Correo Electrónico', dataIndex: 'email' },
-    { title: 'Rol', dataIndex: 'rol', render: (value) => <Tag color={value === 'ADMIN_EMPRESA' ? 'gold' : 'blue'}>{roleLabel(String(value))}</Tag> },
+    { title: 'Rol', dataIndex: 'rol', render: (value) => <Tag color={value === 'ADMINISTRADOR' ? 'gold' : 'blue'}>{roleLabel(String(value))}</Tag> },
     { title: 'Empresa', render: (_, user) => user.empresaNombre || 'Empresa actual' },
     { title: 'Estado', dataIndex: 'activo', render: (active) => <Tag color={active ? 'green' : 'red'}>{active ? 'Activo' : 'Inactivo'}</Tag> },
     { title: 'Fecha', dataIndex: 'fechaCreacion', render: (value) => formatDate(value) },

@@ -18,9 +18,7 @@ export const useAuth = () => {
         rolId: response.rolId,
         permisos: response.permisos || [],
       });
-      if (response.rol === 'ADMIN_GENERAL') {
-        navigate('/admin-general');
-      } else if (response.rol === 'ADMIN_EMPRESA') {
+      if (response.rol === 'ADMINISTRADOR') {
         navigate('/admin-empresa');
       } else {
         navigate('/dashboard');

@@ -54,10 +54,10 @@ const Login = () => {
           message="Credenciales de Prueba"
           description={
             <Space direction="vertical" size={2}>
-              <Typography.Text>Administrador General: ana.gimenez@regula.local</Typography.Text>
-              <Typography.Text>Administrador Empresa: elena.caceres@cliente.local</Typography.Text>
-              <Typography.Text>Supervisor: hector.sosa@cliente.local</Typography.Text>
-              <Typography.Text>Analista: diego.benitez@cliente.local</Typography.Text>
+              <Typography.Text>Administrador: administrador@santaclara.local</Typography.Text>
+              <Typography.Text>Supervisor: supervisor@santaclara.local</Typography.Text>
+              <Typography.Text>Analista: analista@santaclara.local</Typography.Text>
+              <Typography.Text>Auditor: auditor@santaclara.local</Typography.Text>
               <Typography.Text>Contraseña: Regula2026!</Typography.Text>
             </Space>
           }

@@ -18,7 +18,6 @@ const Reports = lazy(() => import('./pages/Reports'));
 const Users = lazy(() => import('./pages/Users'));
 const Profile = lazy(() => import('./pages/Profile'));
 const MotorHistorial = lazy(() => import('./pages/MotorHistorial'));
-const AdminGeneral = lazy(() => import('./pages/AdminGeneral'));
 const AdminEmpresa = lazy(() => import('./pages/AdminEmpresa'));
 
 const PageLoader = () => (
@@ -46,7 +45,7 @@ function App() {
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute blockedRoles={['ADMIN_GENERAL', 'ADMIN_EMPRESA']} />}>
+        <Route element={<ProtectedRoute blockedRoles={['ADMINISTRADOR']} />}>
           <Route element={<AuthenticatedLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/alerts" element={<Alerts />} />
@@ -57,27 +56,21 @@ function App() {
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermissions={['EMPRESAS_VER']} requiredRoles={['ADMIN_GENERAL']} />}>
-          <Route element={<AuthenticatedLayout />}>
-            <Route path="/admin-general" element={<AdminGeneral />} />
-          </Route>
-        </Route>
-
-        <Route element={<ProtectedRoute requiredPermissions={['LICENCIAS_VER']} requiredRoles={['ADMIN_EMPRESA']} />}>
+        <Route element={<ProtectedRoute requiredPermissions={['LICENCIAS_VER']} requiredRoles={['ADMINISTRADOR']} />}>
           <Route element={<AuthenticatedLayout />}>
             <Route path="/admin-empresa" element={<AdminEmpresa />} />
             <Route path="/admin-empresa/:section" element={<AdminEmpresa />} />
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermissions={['REGLAS_VER']} blockedRoles={['ADMIN_GENERAL', 'ADMIN_EMPRESA']} />}>
+        <Route element={<ProtectedRoute requiredPermissions={['REGLAS_VER']} blockedRoles={['ADMINISTRADOR']} />}>
           <Route element={<AuthenticatedLayout />}>
             <Route path="/rules" element={<Navigate to="/rule-engine" replace />} />
             <Route path="/rule-engine" element={<RuleEngine />} />
           </Route>
         </Route>
 
-        <Route element={<ProtectedRoute requiredPermissions={['USUARIOS_VER']} requiredRoles={['ADMIN_EMPRESA']} />}>
+        <Route element={<ProtectedRoute requiredPermissions={['USUARIOS_VER']} requiredRoles={['ADMINISTRADOR']} />}>
           <Route element={<AuthenticatedLayout />}>
             <Route path="/users" element={<Users />} />
           </Route>

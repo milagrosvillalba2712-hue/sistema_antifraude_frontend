@@ -1,9 +1,8 @@
 export type Rol =
   | 'ANALISTA'
   | 'AUDITOR'
-  | 'ADMIN_GENERAL'
-  | 'ADMIN_EMPRESA'
-  | 'GERENTE_SUPERVISOR';
+  | 'ADMINISTRADOR'
+  | 'SUPERVISOR';
 
 export type UUID = string;
 

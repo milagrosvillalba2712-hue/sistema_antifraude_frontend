@@ -37,7 +37,7 @@ const toApiPayload = (data: UsuarioRequest) => ({
   email: data.email,
   password: data.password,
   rol: data.rol,
-  empresaId: data.rol === 'ADMIN_GENERAL' || data.empresaId === '' || data.empresaId == null
+  empresaId: data.empresaId === '' || data.empresaId == null
     ? null
     : data.empresaId,
 });

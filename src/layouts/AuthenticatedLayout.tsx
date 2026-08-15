@@ -3,14 +3,12 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertOutlined,
   AuditOutlined,
-  BankOutlined,
   BarChartOutlined,
   FileTextOutlined,
   HistoryOutlined,
   MenuFoldOutlined,
   MenuOutlined,
   MenuUnfoldOutlined,
-  SafetyCertificateOutlined,
   SearchOutlined,
   SettingOutlined,
   TeamOutlined,
@@ -36,8 +34,6 @@ interface NavigationItem {
 const { Header, Sider, Content } = Layout;
 
 const operationalNavigation: NavigationItem[] = [
-  { key: '/admin-general', name: 'Administrador General', icon: <BankOutlined />, permission: 'EMPRESAS_VER' },
-  { key: '/admin-empresa', name: 'Administrador Empresa', icon: <SafetyCertificateOutlined />, permission: 'LICENCIAS_VER' },
   { key: '/dashboard', name: 'Tablero', icon: <BarChartOutlined />, permission: 'ALERTAS_VER' },
   { key: '/alerts', name: 'Alertas', icon: <AlertOutlined />, permission: 'ALERTAS_VER', badge: true },
   { key: '/rule-engine', name: 'Motor de Reglas', icon: <AuditOutlined />, permission: 'REGLAS_VER' },
@@ -59,11 +55,6 @@ const adminEmpresaNavigation: NavigationItem[] = [
   { key: '/profile', name: 'Mi Perfil', icon: <UserOutlined /> },
 ];
 
-const adminGeneralNavigation: NavigationItem[] = [
-  { key: '/admin-general', name: 'Tablero Central', icon: <BankOutlined />, permission: 'EMPRESAS_VER' },
-  { key: '/profile', name: 'Mi Perfil', icon: <UserOutlined /> },
-];
-
 export const AuthenticatedLayout = () => {
   const screens = Grid.useBreakpoint();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -73,11 +64,9 @@ export const AuthenticatedLayout = () => {
   const navigate = useNavigate();
   const { user, hasPermission } = useAuthStore();
 
-  const baseNavigation = user?.rol === 'ADMIN_EMPRESA'
+  const baseNavigation = user?.rol === 'ADMINISTRADOR'
     ? adminEmpresaNavigation
-    : user?.rol === 'ADMIN_GENERAL'
-      ? adminGeneralNavigation
-      : operationalNavigation.filter((item) => !['/admin-general', '/admin-empresa'].includes(item.key));
+    : operationalNavigation;
 
   const filteredNavigation = useMemo(
     () => baseNavigation.filter((item) => !item.permission || hasPermission(item.permission as never)),
@@ -92,11 +81,9 @@ export const AuthenticatedLayout = () => {
   }, [filteredNavigation, location.pathname]);
 
   const selectedItemName = filteredNavigation.find((item) => item.key === selectedKey)?.name || 'Tablero';
-  const homePath = user?.rol === 'ADMIN_EMPRESA'
+  const homePath = user?.rol === 'ADMINISTRADOR'
     ? '/admin-empresa'
-    : user?.rol === 'ADMIN_GENERAL'
-      ? '/admin-general'
-      : '/dashboard';
+    : '/dashboard';
 
   const menuItems = filteredNavigation.map((item) => ({
     key: item.key,

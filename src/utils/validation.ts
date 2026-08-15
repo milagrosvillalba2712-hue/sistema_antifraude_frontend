@@ -23,7 +23,7 @@ export const usuarioSchema = z.object({
   nombreCompleto: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   email: z.string().email('Correo electrónico inválido'),
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres').optional().or(z.literal('')),
-  rol: z.enum(['ADMIN_GENERAL', 'ADMIN_EMPRESA', 'GERENTE_SUPERVISOR', 'ANALISTA', 'AUDITOR'], {
+  rol: z.enum(['ADMINISTRADOR', 'SUPERVISOR', 'ANALISTA', 'AUDITOR'], {
     message: 'El rol es requerido',
   }),
   empresaId: z.union([z.string(), z.null()]).optional(),

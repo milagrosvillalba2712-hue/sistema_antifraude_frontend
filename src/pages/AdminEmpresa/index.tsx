@@ -12,13 +12,15 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { Line } from '@ant-design/charts';
-import { Alert, Button, Card, Col, DatePicker, Descriptions, Input, List, Popover, Row, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Col, DatePicker, Descriptions, Input, Popover, Row, Select, Space, Statistic, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { adminEmpresaApi } from '../../api';
 import { useAuthStore } from '../../store';
 import { useConfirmAction } from '../../components/common';
-import { ConsumoVsPlan, EventosLicencia, INSTALACION_STORAGE_KEY, InstalacionLicenciaCard } from '../../components/licencia';
+import { ConsumoVsPlan, InstalacionLicenciaCard } from '../../components/licencia';
+import JobsConfigurator from './JobsConfigurator';
+import type { JobLocal } from '../../types';
 
 type AdminEmpresaSection = 'dashboard' | 'licencia-pagos' | 'consumo' | 'apis' | 'configuracion' | 'auditoria';
 type RelativeTimeRangeKey = '5m' | '10m' | '15m' | '30m' | '1h' | '3h' | '6h' | '12h' | '24h';
@@ -70,11 +72,9 @@ const AdminEmpresa = () => {
   const suscripcion = asRecord(summary.suscripcion);
   const plan = asRecord(summary.plan);
   const licencia = asRecord(summary.licencia);
-  const instalacion = asRecord(summary.instalacion);
   const empresa = asRecord(summary.empresa);
   const apiResumen = asRecord(asRecord(apis.resumen).total !== undefined ? apis.resumen : summary.apis);
   const controlPlane = asRecord(summary.controlPlane);
-  const instalacionId = stringValue(instalacion.id) || localStorage.getItem(INSTALACION_STORAGE_KEY);
   const suscripcionActivaId = Number(suscripcion.id ?? 0) || null;
   const diasRestantes = daysUntil(stringValue(licencia.venceEn));
 
@@ -82,8 +82,8 @@ const AdminEmpresa = () => {
   const consumoLocalRows = useMemo(() => arrayValue(consumo.consumoLocal), [consumo]);
   const consultasApi = useMemo(() => arrayValue(apis.consultas), [apis]);
   const eventosConectividad = useMemo(() => arrayValue(conectividad.eventosLicencia), [conectividad]);
-  const parametrosEditables = useMemo(() => arrayValue(configuracion.parametrosEditables), [configuracion]);
-  const jobs = useMemo(() => arrayValue(configuracion.jobs), [configuracion]);
+  const jobs = useMemo(() => arrayValue(configuracion.jobs) as unknown as JobLocal[], [configuracion]);
+  const jobsHabilitados = Boolean(configuracion.jobsHabilitados);
 
   const load = async () => {
     setLoading(true);
@@ -126,20 +126,6 @@ const AdminEmpresa = () => {
       action: async () => {
         const result = await adminEmpresaApi.validarLicencia();
         message.success(`Licencia validada: ${stringValue(result.modo) || 'resultado recibido'}`);
-        await load();
-      },
-    });
-  };
-
-  const sincronizarCatalogos = () => {
-    confirm({
-      title: 'Confirmar Sincronización Manual',
-      description: 'La sincronización normal debe ejecutarse por una tarea programada. Esta acción registra una solicitud manual para pruebas o recuperación ante fallos.',
-      detail: 'Debe existir conectividad con el Control Plane y permisos sobre catálogos versionados.',
-      confirmLabel: 'Sincronizar',
-      action: async () => {
-        const result = await adminEmpresaApi.sincronizarCatalogos();
-        message.success(stringValue(result.mensaje) || 'Solicitud registrada');
         await load();
       },
     });
@@ -188,7 +174,6 @@ const AdminEmpresa = () => {
           loading={loading}
           empresaId={user?.empresaId}
           suscripcionActivaId={suscripcionActivaId}
-          instalacionId={instalacionId}
           suscripcion={suscripcion}
           plan={plan}
           licencia={licencia}
@@ -207,7 +192,7 @@ const AdminEmpresa = () => {
       )}
 
       {activeSection === 'configuracion' && (
-        <ConfiguracionSection loading={loading} parametrosEditables={parametrosEditables} jobs={jobs} onSincronizarCatalogos={sincronizarCatalogos} />
+        <ConfiguracionSection loading={loading} jobsHabilitados={jobsHabilitados} jobs={jobs} onReload={load} />
       )}
 
       {activeSection === 'auditoria' && (
@@ -633,11 +618,10 @@ const resolveApiDate = (row: Record<string, unknown>) => row.fecha
   ?? row.fecha_hora_modificacion
   ?? row.fechaHoraModificacion;
 
-const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, instalacionId, suscripcion, plan, licencia, pagos, diasRestantes, onValidarLicencia }: {
+const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, suscripcion, plan, licencia, pagos, diasRestantes, onValidarLicencia }: {
   loading: boolean;
   empresaId?: string | null;
   suscripcionActivaId: number | null;
-  instalacionId?: string | null;
   suscripcion: Record<string, unknown>;
   plan: Record<string, unknown>;
   licencia: Record<string, unknown>;
@@ -654,7 +638,6 @@ const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, instala
       description="La licencia se controla por fecha de inicio, fecha de fin, días restantes y período de gracia. La validación manual es útil cuando se reconecta el Control Plane, se renueva el pago, se sospecha manipulación del estado local o se necesita demostrar el flujo en una prueba."
     />
     <InstalacionLicenciaCard empresaId={empresaId} suscripcionActivaId={suscripcionActivaId} />
-    <EventosLicencia instalacionId={instalacionId} />
     <Row gutter={[16, 16]}>
       <Col xs={24} lg={12}>
         <Card title="Contrato De Licencia" loading={loading} extra={<Button icon={<SafetyCertificateOutlined />} onClick={onValidarLicencia}>Validar Estado</Button>}>
@@ -722,35 +705,15 @@ const ApisSection = ({ loading, apiResumen, controlPlane, consultasApi, eventosC
   </Space>
 );
 
-const ConfiguracionSection = ({ loading, parametrosEditables, jobs, onSincronizarCatalogos }: {
+const ConfiguracionSection = ({ loading, jobsHabilitados, jobs, onReload }: {
   loading: boolean;
-  parametrosEditables: Record<string, unknown>[];
-  jobs: Record<string, unknown>[];
-  onSincronizarCatalogos: () => void;
+  jobsHabilitados: boolean;
+  jobs: JobLocal[];
+  onReload: () => Promise<void>;
 }) => (
-  <Row gutter={[16, 16]}>
-    <Col xs={24} lg={10}>
-      <Card title="Parametros Permitidos" loading={loading}>
-        <List dataSource={parametrosEditables} renderItem={(item) => <List.Item>{formatValue(item)}</List.Item>} />
-      </Card>
-    </Col>
-    <Col xs={24} lg={14}>
-      <Space direction="vertical" style={{ width: '100%' }}>
-        <Card
-          title="Sincronizacion De Catalogos"
-          extra={<Button icon={<CloudSyncOutlined />} onClick={onSincronizarCatalogos}>Sincronizar Manualmente</Button>}
-        >
-          <Typography.Paragraph>
-            La sincronización productiva debe ejecutarse por una tarea programada. La tarea consulta el Control Plane, descarga catálogos versionados permitidos por el plan y registra resultado, errores y fecha de ejecución.
-          </Typography.Paragraph>
-          <Typography.Text type="secondary">
-            La acción manual queda para pruebas, recuperación ante fallos o demostración de tesis.
-          </Typography.Text>
-        </Card>
-        <DataTable title="Jobs Locales" rows={jobs} loading={loading} />
-      </Space>
-    </Col>
-  </Row>
+  <Card title="Jobs Locales (Agente On-Premise)" loading={loading} style={{ width: '100%' }}>
+    <JobsConfigurator loading={loading} jobs={jobs} jobsHabilitados={jobsHabilitados} onReload={onReload} />
+  </Card>
 );
 
 const AuditoriaSection = ({ loading, auditoria }: { loading: boolean; auditoria: Record<string, unknown>[] }) => (

@@ -634,3 +634,44 @@ export interface ReglaHistorialVersion {
   usuarioNombre?: string;
   fechaHora: string;
 }
+
+export type TipoDocumentoLegal = 'TERMINOS' | 'POLITICA_PRIVACIDAD';
+
+export type EstadoJobLocal = 'ACTIVO' | 'INACTIVO';
+
+export type UnidadFrecuenciaJob = 'MINUTOS' | 'HORAS' | 'DIAS';
+
+export interface JobLocalDetalle {
+  frecuenciaValor?: number | null;
+  frecuenciaUnidad?: UnidadFrecuenciaJob | null;
+  hora?: string | null;
+  cron?: string | null;
+  ultimaEjecucion?: string | null;
+  proximaEjecucion?: string | null;
+  ultimoResultado?: string | null;
+  ultimoDetalle?: string | null;
+}
+
+export interface JobLocal {
+  id: number | string;
+  tipo: string;
+  codigo: string;
+  nombre: string;
+  descripcion?: string | null;
+  estado: EstadoJobLocal;
+  editable: boolean;
+  orden: number;
+  detalle: JobLocalDetalle;
+}
+
+export interface JobLocalFrecuencia {
+  valor: number;
+  unidad: UnidadFrecuenciaJob;
+  hora?: string | null;
+  cron?: string | null;
+}
+
+export interface JobLocalUpdateRequest {
+  estado?: EstadoJobLocal;
+  frecuencia?: JobLocalFrecuencia;
+}

@@ -62,6 +62,12 @@ const Login = () => {
             </Space>
           }
         />
+
+        <Typography.Text type="secondary" style={{ textAlign: 'center', display: 'block', fontSize: 12 }}>
+          <Link to="/documentos-legales">Terminos y Condiciones</Link>
+          <span> · </span>
+          <Link to="/documentos-legales/privacidad">Politica de Privacidad</Link>
+        </Typography.Text>
       </Space>
     </Card>
   );

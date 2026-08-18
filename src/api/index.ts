@@ -15,3 +15,4 @@ export { ruleEngineApi } from './ruleEngine';
 export { licensingApi } from './licensing';
 export { licensingLocalApi } from './licensingLocal';
 export { adminEmpresaApi } from './adminEmpresa';
+export { terminosCondicionesApi } from './terminosCondiciones';

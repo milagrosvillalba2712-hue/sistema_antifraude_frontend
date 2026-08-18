@@ -15,7 +15,9 @@ interface AuthState {
   token: string | null;
   user: User | null;
   isAuthenticated: boolean;
+  aceptoTerminos: boolean;
   login: (token: string, user: User) => void;
+  setAceptoTerminos: (value: boolean) => void;
   logout: () => void;
   hasPermission: (permission: Permission) => boolean;
 }
@@ -26,14 +28,18 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       isAuthenticated: false,
+      aceptoTerminos: false,
       login: (token, user) => {
         localStorage.setItem('token', token);
         set({ token, user, isAuthenticated: true });
       },
+      setAceptoTerminos: (value: boolean) => {
+        set({ aceptoTerminos: value });
+      },
       logout: () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        set({ token: null, user: null, isAuthenticated: false });
+        set({ token: null, user: null, isAuthenticated: false, aceptoTerminos: false });
       },
       hasPermission: (permission) => {
         const { user } = get();
@@ -46,6 +52,7 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        aceptoTerminos: state.aceptoTerminos,
       }),
     }
   )

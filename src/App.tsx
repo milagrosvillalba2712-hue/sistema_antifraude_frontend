@@ -10,6 +10,8 @@ const Register = lazy(() => import('./pages/Register'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const AcepteTerminos = lazy(() => import('./pages/AcepteTerminos'));
+const DocumentosLegalesPublico = lazy(() => import('./pages/DocumentosLegalesPublico'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Alerts = lazy(() => import('./pages/Alerts'));
 const RuleEngine = lazy(() => import('./pages/RuleEngine'));
@@ -37,6 +39,9 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/acepte-terminos" element={<AcepteTerminos />} />
+            <Route path="/documentos-legales" element={<DocumentosLegalesPublico />} />
+            <Route path="/documentos-legales/:tipo" element={<DocumentosLegalesPublico />} />
           </Route>
 
         <Route element={<ProtectedRoute />}>

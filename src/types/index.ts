@@ -528,6 +528,20 @@ export interface ErrorResponse {
   path: string;
   timestamp: string;
   fieldErrors?: Record<string, string>;
+  detalles?: Record<string, unknown>;
+}
+
+export interface LoginErrorDetails {
+  intentosFallidos?: number;
+  maxIntentos?: number;
+  bloqueadoHasta?: string;
+  minutosRestantes?: number;
+}
+
+export interface LoginErrorResponse {
+  codigo_error?: string;
+  message?: string;
+  detalles?: LoginErrorDetails;
 }
 
 export interface SimuladorRequest {

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Form, Input, Space, Typography } from 'antd';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks';
@@ -11,11 +12,58 @@ interface LoginValues {
 const Login = () => {
   const { signIn } = useAuth();
   const [form] = Form.useForm<LoginValues>();
+  const [lockedMessage, setLockedMessage] = useState<string | null>(null);
+  const [lockedUntil, setLockedUntil] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState('');
+
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const update = () => {
+      const diff = new Date(lockedUntil).getTime() - Date.now();
+      if (diff <= 0) {
+        setLockedMessage(null);
+        setLockedUntil(null);
+        setCountdown('');
+        return;
+      }
+      const min = Math.floor(diff / 60000);
+      const sec = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${min}m ${sec}s`);
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [lockedUntil]);
 
   const onSubmit = async (values: LoginValues) => {
+    setLockedMessage(null);
+    setLockedUntil(null);
     const result = await signIn(values);
+
     if (!result.success) {
-      form.setFields([{ name: 'password', errors: [result.error || 'Error al iniciar sesion'] }]);
+      if (result.codigo === 'ACCOUNT_LOCKED') {
+        setLockedMessage(result.error!);
+        if (result.detalles?.bloqueadoHasta) {
+          setLockedUntil(result.detalles.bloqueadoHasta);
+        }
+        return;
+      }
+
+      let message = result.error!;
+      if (result.codigo === 'BAD_PASSWORD' && result.detalles) {
+        const remaining = (result.detalles.maxIntentos ?? 3) - (result.detalles.intentosFallidos ?? 0);
+        if (remaining > 0) {
+          message = `${result.error}. Le quedan ${remaining} intento(s).`;
+        } else {
+          message = result.error!;
+        }
+      }
+
+      if (result.field) {
+        form.setFields([{ name: result.field, errors: [message] }]);
+      } else {
+        form.setFields([{ name: 'password', errors: [message] }]);
+      }
     }
   };
 
@@ -30,22 +78,33 @@ const Login = () => {
           </div>
         </Space>
 
+        {lockedMessage && (
+          <Alert
+            type="error"
+            showIcon
+            message={lockedMessage}
+            description={countdown ? `Tiempo restante: ${countdown}` : undefined}
+          />
+        )}
+
         <Form form={form} layout="vertical" onFinish={onSubmit} requiredMark={false}>
-          <Form.Item label="Correo Electrónico" name="email" rules={[{ required: true, message: 'Ingresa tu correo electrónico' }, { type: 'email', message: 'Correo electrónico inválido' }]}>
-            <Input placeholder="correo@ejemplo.com" autoComplete="email" />
+          <Form.Item label="Correo Electronico" name="email" rules={[{ required: true, message: 'Ingresa tu correo electronico' }, { type: 'email', message: 'Correo electronico invalido' }]}>
+            <Input placeholder="correo@ejemplo.com" autoComplete="email" disabled={!!lockedUntil} />
           </Form.Item>
-          <Form.Item label="Contraseña" name="password" rules={[{ required: true, message: 'Ingresa tu contraseña' }]}>
-            <Input.Password placeholder="Contraseña" autoComplete="current-password" />
+          <Form.Item label="Contrasena" name="password" rules={[{ required: true, message: 'Ingresa tu contrasena' }]}>
+            <Input.Password placeholder="Contrasena" autoComplete="current-password" disabled={!!lockedUntil} />
           </Form.Item>
-          <Button type="primary" htmlType="submit" block loading={form.isFieldsValidating()}>
-            Iniciar Sesión
+          <Button type="primary" htmlType="submit" block loading={form.isFieldsValidating()} disabled={!!lockedUntil}>
+            Iniciar Sesion
           </Button>
         </Form>
 
         <Typography.Text style={{ textAlign: 'center', display: 'block' }}>
-          <Link to="/forgot-password">¿Olvidaste tu contraseña?</Link>
+          <Link to="/forgot-password">Olvidaste tu contrasena?</Link>
           <span> · </span>
           <Link to="/register">Registrarme</Link>
+          <span> · </span>
+          <Link to="/invitacion">Tengo codigo de invitacion</Link>
         </Typography.Text>
 
         <Alert
@@ -55,10 +114,8 @@ const Login = () => {
           description={
             <Space direction="vertical" size={2}>
               <Typography.Text>Administrador: administrador@santaclara.local</Typography.Text>
-              <Typography.Text>Supervisor: supervisor@santaclara.local</Typography.Text>
-              <Typography.Text>Analista: analista@santaclara.local</Typography.Text>
-              <Typography.Text>Auditor: auditor@santaclara.local</Typography.Text>
-              <Typography.Text>Contraseña: Regula2026!</Typography.Text>
+              <Typography.Text>Auditor: beatriz.morales@santaclara.local</Typography.Text>
+              <Typography.Text>Contrasena: Regula2026!</Typography.Text>
             </Space>
           }
         />

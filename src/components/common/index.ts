@@ -10,3 +10,4 @@ export { default as WorkloadBar } from './WorkloadBar';
 export { RegulaIcon } from './RegulaIcon';
 export { default as ActionDropdown } from './ActionDropdown';
 export type { ActionDropdownItem } from './ActionDropdown';
+export { default as RecaptchaBox } from './RecaptchaBox';

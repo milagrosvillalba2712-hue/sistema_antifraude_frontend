@@ -79,7 +79,6 @@ const AdminEmpresa = () => {
   const diasRestantes = daysUntil(stringValue(licencia.venceEn));
 
   const consumoRows = useMemo(() => arrayValue(consumo.usoSuscripcion), [consumo]);
-  const consumoLocalRows = useMemo(() => arrayValue(consumo.consumoLocal), [consumo]);
   const consultasApi = useMemo(() => arrayValue(apis.consultas), [apis]);
   const eventosConectividad = useMemo(() => arrayValue(conectividad.eventosLicencia), [conectividad]);
   const jobs = useMemo(() => arrayValue(configuracion.jobs) as unknown as JobLocal[], [configuracion]);
@@ -184,7 +183,7 @@ const AdminEmpresa = () => {
       )}
 
       {activeSection === 'consumo' && (
-        <ConsumoSection loading={loading} empresaId={user?.empresaId} consumoRows={consumoRows} consumoLocalRows={consumoLocalRows} />
+        <ConsumoSection loading={loading} empresaId={user?.empresaId} consumoRows={consumoRows} />
       )}
 
       {activeSection === 'apis' && (
@@ -673,16 +672,14 @@ const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, suscrip
   </Space>
 );
 
-const ConsumoSection = ({ loading, empresaId, consumoRows, consumoLocalRows }: {
+const ConsumoSection = ({ loading, empresaId, consumoRows }: {
   loading: boolean;
   empresaId?: string | null;
   consumoRows: Record<string, unknown>[];
-  consumoLocalRows: Record<string, unknown>[];
 }) => (
   <Space direction="vertical" style={{ width: '100%' }} size="middle">
     <ConsumoVsPlan empresaId={empresaId} />
     <DataTable title="Uso De Suscripcion" rows={consumoRows} loading={loading} />
-    <DataTable title="Consumo Local De Instalacion" rows={consumoLocalRows} loading={loading} />
   </Space>
 );
 

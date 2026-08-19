@@ -11,6 +11,7 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 const AcepteTerminos = lazy(() => import('./pages/AcepteTerminos'));
+const Invitacion = lazy(() => import('./pages/Invitacion'));
 const DocumentosLegalesPublico = lazy(() => import('./pages/DocumentosLegalesPublico'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Alerts = lazy(() => import('./pages/Alerts'));
@@ -40,6 +41,7 @@ function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/acepte-terminos" element={<AcepteTerminos />} />
+            <Route path="/invitacion" element={<Invitacion />} />
             <Route path="/documentos-legales" element={<DocumentosLegalesPublico />} />
             <Route path="/documentos-legales/:tipo" element={<DocumentosLegalesPublico />} />
           </Route>

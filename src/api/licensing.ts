@@ -39,16 +39,24 @@ export const licensingApi = {
   },
 
   // Solicitud de roles adicionales
-  verificarRoles: async (empresaId: string): Promise<Record<string, unknown>> => {
-    const { data } = await api.get('/licensing/solicitud-roles/verificar', { params: { empresaId } });
+  verificarRoles: async (rolCodigo: string): Promise<Record<string, unknown>> => {
+    const { data } = await api.get('/admin-empresa/solicitud-roles/verificar', { params: { rolCodigo } });
     return data;
   },
-  crearSolicitudRoles: async (datos: { empresaId: string; tipoRol: string; cantidad: number; motivo: string }): Promise<Record<string, unknown>> => {
-    const { data } = await api.post('/licensing/solicitud-roles', datos);
+  crearSolicitudRoles: async (datos: { tipoRol: string; cantidad: number; motivo: string }): Promise<Record<string, unknown>> => {
+    const { data } = await api.post('/admin-empresa/solicitud-roles', {
+      rolCodigo: datos.tipoRol,
+      cantidad: datos.cantidad,
+      observacion: datos.motivo,
+    });
     return data;
   },
-  pagarSolicitudRoles: async (solicitudId: number): Promise<Record<string, unknown>> => {
-    const { data } = await api.post(`/licensing/solicitud-roles/${solicitudId}/pagar`);
+  pagarSolicitudRoles: async (solicitudId: number, body?: { successUrl?: string; cancelUrl?: string }): Promise<Record<string, unknown>> => {
+    const { data } = await api.post(`/admin-empresa/solicitud-roles/${solicitudId}/pagar`, body ?? {});
+    return data;
+  },
+  confirmarPagoSolicitudRoles: async (sessionId: string): Promise<Record<string, unknown>> => {
+    const { data } = await api.post('/admin-empresa/solicitud-roles/stripe-confirmar', { sessionId });
     return data;
   },
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { EditOutlined, MailOutlined, PlusOutlined, ShoppingCartOutlined, StopOutlined, TeamOutlined } from '@ant-design/icons';
@@ -38,6 +38,8 @@ const Users = () => {
   const [solicitudForm] = Form.useForm<{ tipoRol: string; cantidad: number; motivo: string }>();
   const [solicitudConfirmOpen, setSolicitudConfirmOpen] = useState(false);
   const [solicitudPendiente, setSolicitudPendiente] = useState<{ id: number; tipoRol: string; cantidad: number; precioUnitario: number; total: number } | null>(null);
+  const [confirmandoPagoStripe, setConfirmandoPagoStripe] = useState(false);
+  const processedStripeSessionRef = useRef<string | null>(null);
 
   const {
     control,
@@ -117,6 +119,31 @@ const Users = () => {
 
   useEffect(() => {
     fetchUsers();
+  }, [fetchUsers]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('rolesPayment');
+    const sessionId = params.get('session_id');
+    if (payment === 'success' && sessionId && processedStripeSessionRef.current !== sessionId) {
+      processedStripeSessionRef.current = sessionId;
+      setConfirmandoPagoStripe(true);
+      licensingApi.confirmarPagoSolicitudRoles(sessionId)
+        .then((respuesta) => {
+          message.success(String(respuesta.mensaje ?? 'Pago confirmado. Los roles adicionales ya estan disponibles.'));
+          window.history.replaceState({}, document.title, window.location.pathname);
+          fetchUsers();
+        })
+        .catch((err) => {
+          message.error(err instanceof Error ? err.message : 'No se pudo confirmar el pago con Stripe');
+          window.history.replaceState({}, document.title, window.location.pathname);
+        })
+        .finally(() => setConfirmandoPagoStripe(false));
+    }
+    if (payment === 'cancel') {
+      message.warning('Pago cancelado en Stripe. La solicitud queda pendiente.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, [fetchUsers]);
 
   const onSubmit = async (data: UsuarioFormData) => {
@@ -200,7 +227,6 @@ const Users = () => {
     }
     try {
       const respuesta = await licensingApi.crearSolicitudRoles({
-        empresaId,
         tipoRol: values.tipoRol,
         cantidad: values.cantidad,
         motivo: values.motivo,
@@ -224,8 +250,18 @@ const Users = () => {
   const handlePagarSolicitud = async () => {
     if (!solicitudPendiente) return;
     try {
-      await licensingApi.pagarSolicitudRoles(solicitudPendiente.id);
-      message.success('Pago procesado. Los roles adicionales ya estan disponibles.');
+      const currentUrl = `${window.location.origin}/users`;
+      const respuesta = await licensingApi.pagarSolicitudRoles(solicitudPendiente.id, {
+        successUrl: `${currentUrl}?rolesPayment=success`,
+        cancelUrl: `${currentUrl}?rolesPayment=cancel`,
+      });
+      const checkoutUrl = String(respuesta.checkoutUrl ?? '');
+      if (checkoutUrl) {
+        message.success('Sesion de pago creada. Redirigiendo a Stripe Checkout.');
+        window.location.href = checkoutUrl;
+        return;
+      }
+      message.warning(String(respuesta.mensaje ?? 'No se pudo abrir Stripe Checkout.'));
       setSolicitudConfirmOpen(false);
       setSolicitudPendiente(null);
       fetchUsers();
@@ -504,7 +540,7 @@ const Users = () => {
         title="Confirmar Pago"
         footer={[
           <Button key="cancel" onClick={() => { setSolicitudConfirmOpen(false); setSolicitudPendiente(null); }}>Cancelar</Button>,
-          <Button key="pay" type="primary" onClick={handlePagarSolicitud}>Simular Pago</Button>,
+          <Button key="pay" type="primary" onClick={handlePagarSolicitud} loading={confirmandoPagoStripe}>Pagar Con Stripe</Button>,
         ]}
         centered
         width={420}
@@ -528,7 +564,7 @@ const Users = () => {
                 <Typography.Text strong>{formatCurrency(solicitudPendiente.total)}</Typography.Text>
               </Space>
             </Space>
-            <Alert type="info" showIcon message="Pago simulado" description="En produccion esto conectaria con la pasarela de pago. En modo demo, el pago se registra automaticamente como pagado." />
+            <Alert type="info" showIcon message="Pago Con Stripe" description="Se abrirá Stripe Checkout. Al volver, Regula confirmará la sesión y habilitará los cupos comprados." />
           </Space>
         )}
       </Modal>

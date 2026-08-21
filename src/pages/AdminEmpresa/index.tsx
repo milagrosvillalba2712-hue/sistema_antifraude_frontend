@@ -4,6 +4,7 @@ import {
   ApiOutlined,
   CalendarOutlined,
   CloudSyncOutlined,
+  CreditCardOutlined,
   FieldTimeOutlined,
   InfoCircleOutlined,
   ReloadOutlined,
@@ -130,6 +131,29 @@ const AdminEmpresa = () => {
     });
   };
 
+  const iniciarPagoStripe = () => {
+    confirm({
+      title: 'Confirmar Pago De Licencia',
+      description: 'Se creará una sesión segura de Stripe Checkout desde el Control Plane. No se almacenarán datos de tarjeta en Regula.',
+      detail: `Empresa: ${stringValue(empresa.nombre) || user?.empresaId || 'Sin empresa resuelta'}`,
+      confirmLabel: 'Continuar A Stripe',
+      action: async () => {
+        const currentUrl = `${window.location.origin}/admin-empresa/licencia-pagos`;
+        const result = await adminEmpresaApi.iniciarPagoStripe({
+          successUrl: `${currentUrl}?payment=success`,
+          cancelUrl: `${currentUrl}?payment=cancel`,
+        });
+        const checkoutUrl = stringValue(result.checkoutUrl);
+        if (checkoutUrl) {
+          message.success('Sesión de pago creada. Redirigiendo a Stripe Checkout.');
+          window.location.href = checkoutUrl;
+          return;
+        }
+        message.warning(stringValue(result.mensaje) || 'Stripe todavía no está configurado en el Control Plane.');
+      },
+    });
+  };
+
   const meta = sectionMeta[activeSection];
 
   return (
@@ -179,6 +203,7 @@ const AdminEmpresa = () => {
           pagos={pagos}
           diasRestantes={diasRestantes}
           onValidarLicencia={validarLicencia}
+          onPagarStripe={iniciarPagoStripe}
         />
       )}
 
@@ -617,7 +642,7 @@ const resolveApiDate = (row: Record<string, unknown>) => row.fecha
   ?? row.fecha_hora_modificacion
   ?? row.fechaHoraModificacion;
 
-const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, suscripcion, plan, licencia, pagos, diasRestantes, onValidarLicencia }: {
+const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, suscripcion, plan, licencia, pagos, diasRestantes, onValidarLicencia, onPagarStripe }: {
   loading: boolean;
   empresaId?: string | null;
   suscripcionActivaId: number | null;
@@ -627,6 +652,7 @@ const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, suscrip
   pagos: Record<string, unknown>[];
   diasRestantes: number | null;
   onValidarLicencia: () => void;
+  onPagarStripe: () => void;
 }) => (
   <Space direction="vertical" style={{ width: '100%' }} size="large">
     <Alert
@@ -651,18 +677,19 @@ const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, suscrip
         </Card>
       </Col>
       <Col xs={24} lg={12}>
-        <Card title="Pago De La Licencia" loading={loading}>
+        <Card title="Pago De La Licencia" loading={loading} extra={<Button type="primary" icon={<CreditCardOutlined />} onClick={onPagarStripe}>Pagar Con Stripe</Button>}>
           <Alert
-            type="warning"
+            type="info"
             showIcon
-            message="Pasarela Pendiente"
-            description="En una fase futura se integrara una pasarela de pago. Por ahora esta vista muestra el diseno operativo: monto, vencimiento, estado y comprobante esperado."
+            message="Pasarela Stripe"
+            description="El pago se inicia en Stripe Checkout desde el Control Plane. Regula solo conserva la referencia, estado y eventos de conciliación."
           />
           <Descriptions column={1} size="small" style={{ marginTop: 16 }} items={[
             { key: 'estadoPago', label: 'Estado Del Pago', children: pagos.length > 0 ? formatValue(pagos[0].estado) : 'Sin pago registrado' },
             { key: 'monto', label: 'Monto De Licencia', children: pagos.length > 0 ? formatValue(pagos[0].monto) : '-' },
             { key: 'vencimiento', label: 'Vencimiento De Factura', children: pagos.length > 0 ? formatValue(pagos[0].fechaVencimiento ?? pagos[0].fechaPago) : '-' },
-            { key: 'comprobante', label: 'Comprobante', children: 'Pendiente de integracion' },
+            { key: 'proveedor', label: 'Proveedor', children: pagos.length > 0 ? formatValue(pagos[0].proveedorPago ?? pagos[0].metodoPago) : 'Stripe Checkout' },
+            { key: 'referencia', label: 'Referencia', children: pagos.length > 0 ? formatValue(pagos[0].stripeCheckoutSessionId ?? pagos[0].comprobanteReferencia ?? pagos[0].codigo) : '-' },
           ]} />
         </Card>
       </Col>

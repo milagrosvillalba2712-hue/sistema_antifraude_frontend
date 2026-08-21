@@ -689,3 +689,77 @@ export interface JobLocalUpdateRequest {
   estado?: EstadoJobLocal;
   frecuencia?: JobLocalFrecuencia;
 }
+
+export type TipoListaControl = 'WHITELIST' | 'BLACKLIST';
+export type EstadoListaControl = 'ACTIVA' | 'INACTIVA' | 'VENCIDA';
+export type TipoEntidadControl = 'PERSONA' | 'EMPRESA' | 'CUENTA' | 'DOCUMENTO' | 'WALLET' | 'ALIAS';
+export type TipoIdentificadorControl = 'NOMBRE' | 'DOCUMENTO' | 'CUENTA' | 'WALLET' | 'ALIAS';
+export type EstadoElementoControl = 'ACTIVO' | 'INACTIVO' | 'VENCIDO';
+
+export interface ListaControl {
+  id: number;
+  tipoLista: TipoListaControl;
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+  estado: EstadoListaControl;
+  prioridad: number;
+  fechaVigenciaDesde: string | null;
+  fechaVigenciaHasta: string | null;
+  totalElementos: number;
+}
+
+export interface ListaControlRequest {
+  tipoLista: TipoListaControl;
+  codigo: string;
+  nombre: string;
+  descripcion?: string;
+  estado?: EstadoListaControl;
+  prioridad?: number;
+  fechaVigenciaDesde?: string | null;
+  fechaVigenciaHasta?: string | null;
+}
+
+export interface ElementoListaControl {
+  id: number;
+  listaId: number;
+  tipoLista: TipoListaControl;
+  tipoEntidad: TipoEntidadControl;
+  tipoIdentificador: TipoIdentificadorControl;
+  valorOriginal: string;
+  valorNormalizado: string;
+  nombreMostrado: string | null;
+  documentoMostrado: string | null;
+  motivo: string | null;
+  observacion: string | null;
+  fuente: string;
+  severidad: string;
+  estado: EstadoElementoControl;
+  fechaVigenciaDesde: string | null;
+  fechaVigenciaHasta: string | null;
+}
+
+export interface ElementoListaControlRequest {
+  tipoEntidad?: TipoEntidadControl;
+  tipoIdentificador: TipoIdentificadorControl;
+  valor: string;
+  nombreMostrado?: string;
+  documentoMostrado?: string;
+  motivo?: string;
+  observacion?: string;
+  fuente?: string;
+  severidad?: string;
+  estado?: EstadoElementoControl;
+}
+
+export interface ImportacionListaControl {
+  id: number;
+  listaId: number;
+  nombreArchivo: string;
+  tipoArchivo: string;
+  estado: string;
+  totalRegistros: number;
+  registrosValidos: number;
+  registrosInvalidos: number;
+  erroresJson: string;
+}

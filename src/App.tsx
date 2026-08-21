@@ -22,6 +22,7 @@ const Users = lazy(() => import('./pages/Users'));
 const Profile = lazy(() => import('./pages/Profile'));
 const MotorHistorial = lazy(() => import('./pages/MotorHistorial'));
 const AdminEmpresa = lazy(() => import('./pages/AdminEmpresa'));
+const ListasControl = lazy(() => import('./pages/ListasControl'));
 
 const PageLoader = () => (
   <Card style={{ minHeight: 240, display: 'grid', placeItems: 'center' }}>
@@ -67,6 +68,12 @@ function App() {
           <Route element={<AuthenticatedLayout />}>
             <Route path="/admin-empresa" element={<AdminEmpresa />} />
             <Route path="/admin-empresa/:section" element={<AdminEmpresa />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute requiredPermissions={['CATALOGOS_VER']} />}>
+          <Route element={<AuthenticatedLayout />}>
+            <Route path="/listas-control" element={<ListasControl />} />
           </Route>
         </Route>
 

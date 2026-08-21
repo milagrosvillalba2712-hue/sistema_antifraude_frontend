@@ -17,6 +17,7 @@ import {
   CloudSyncOutlined,
   CreditCardOutlined,
   DatabaseOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { Avatar, Badge, Button, Drawer, Grid, Layout, Menu, Space, Typography } from 'antd';
 import { useAuthStore } from '../store';
@@ -37,6 +38,7 @@ const operationalNavigation: NavigationItem[] = [
   { key: '/dashboard', name: 'Tablero', icon: <BarChartOutlined />, permission: 'ALERTAS_VER' },
   { key: '/alerts', name: 'Alertas', icon: <AlertOutlined />, permission: 'ALERTAS_VER', badge: true },
   { key: '/rule-engine', name: 'Motor de Reglas', icon: <AuditOutlined />, permission: 'REGLAS_VER' },
+  { key: '/listas-control', name: 'Listas de Control', icon: <SafetyCertificateOutlined />, permission: 'CATALOGOS_VER' },
   { key: '/motor/historial', name: 'Motor Historial', icon: <HistoryOutlined />, permission: 'AUDITORIA_VER' },
   { key: '/kyc', name: 'KYC', icon: <SearchOutlined />, permission: 'ALERTAS_VER' },
   { key: '/reports', name: 'Reportes', icon: <FileTextOutlined />, permission: 'REPORTES_VER' },
@@ -50,6 +52,7 @@ const adminEmpresaNavigation: NavigationItem[] = [
   { key: '/admin-empresa/consumo', name: 'Consumo', icon: <DatabaseOutlined />, permission: 'LICENCIAS_VER' },
   { key: '/admin-empresa/apis', name: 'APIs y Conectividad', icon: <ApiOutlined />, permission: 'LICENCIAS_VER' },
   { key: '/admin-empresa/configuracion', name: 'Configuración Local', icon: <CloudSyncOutlined />, permission: 'LICENCIAS_VER' },
+  { key: '/listas-control', name: 'Listas de Control', icon: <SafetyCertificateOutlined />, permission: 'CATALOGOS_VER' },
   { key: '/admin-empresa/auditoria', name: 'Auditoría Local', icon: <HistoryOutlined />, permission: 'AUDITORIA_VER' },
   { key: '/users', name: 'Usuarios', icon: <TeamOutlined />, permission: 'USUARIOS_VER' },
   { key: '/profile', name: 'Mi Perfil', icon: <UserOutlined /> },

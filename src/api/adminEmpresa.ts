@@ -1,4 +1,5 @@
 import api from './axios';
+import type { JobLocalUpdateRequest } from '../types';
 
 export const adminEmpresaApi = {
   resumen: async (): Promise<Record<string, unknown>> => {
@@ -19,6 +20,14 @@ export const adminEmpresaApi = {
   },
   pagos: async (): Promise<Record<string, unknown>[]> => {
     const { data } = await api.get('/admin-empresa/pagos');
+    return data;
+  },
+  iniciarPagoStripe: async (body?: { successUrl?: string; cancelUrl?: string }): Promise<Record<string, unknown>> => {
+    const { data } = await api.post('/admin-empresa/pagos/stripe-checkout', body ?? {});
+    return data;
+  },
+  confirmarPagoStripe: async (sessionId: string): Promise<Record<string, unknown>> => {
+    const { data } = await api.post('/admin-empresa/pagos/stripe-confirmar', { sessionId });
     return data;
   },
   apis: async (): Promise<Record<string, unknown>> => {
@@ -45,8 +54,16 @@ export const adminEmpresaApi = {
     const { data } = await api.get('/admin-empresa/configuracion');
     return data;
   },
-  sincronizarCatalogos: async (): Promise<Record<string, unknown>> => {
-    const { data } = await api.post('/admin-empresa/catalogos/sincronizar');
+  actualizarParametro: async (codigo: string, detalle: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    const { data } = await api.patch(`/admin-empresa/configuracion/parametros/${codigo}`, detalle);
+    return data;
+  },
+  configuracionJobsUpdate: async (codigo: string, body: JobLocalUpdateRequest): Promise<Record<string, unknown>> => {
+    const { data } = await api.patch(`/admin-empresa/configuracion/jobs/${codigo}`, body);
+    return data;
+  },
+  configuracionJobsRun: async (codigo: string): Promise<Record<string, unknown>> => {
+    const { data } = await api.post(`/admin-empresa/configuracion/jobs/${codigo}/ejecutar`);
     return data;
   },
   auditoria: async (): Promise<Record<string, unknown>[]> => {

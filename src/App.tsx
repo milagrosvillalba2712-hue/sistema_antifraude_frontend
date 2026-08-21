@@ -10,6 +10,9 @@ const Register = lazy(() => import('./pages/Register'));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const AcepteTerminos = lazy(() => import('./pages/AcepteTerminos'));
+const Invitacion = lazy(() => import('./pages/Invitacion'));
+const DocumentosLegalesPublico = lazy(() => import('./pages/DocumentosLegalesPublico'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Alerts = lazy(() => import('./pages/Alerts'));
 const RuleEngine = lazy(() => import('./pages/RuleEngine'));
@@ -19,6 +22,7 @@ const Users = lazy(() => import('./pages/Users'));
 const Profile = lazy(() => import('./pages/Profile'));
 const MotorHistorial = lazy(() => import('./pages/MotorHistorial'));
 const AdminEmpresa = lazy(() => import('./pages/AdminEmpresa'));
+const ListasControl = lazy(() => import('./pages/ListasControl'));
 
 const PageLoader = () => (
   <Card style={{ minHeight: 240, display: 'grid', placeItems: 'center' }}>
@@ -37,6 +41,10 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/acepte-terminos" element={<AcepteTerminos />} />
+            <Route path="/invitacion" element={<Invitacion />} />
+            <Route path="/documentos-legales" element={<DocumentosLegalesPublico />} />
+            <Route path="/documentos-legales/:tipo" element={<DocumentosLegalesPublico />} />
           </Route>
 
         <Route element={<ProtectedRoute />}>
@@ -60,6 +68,12 @@ function App() {
           <Route element={<AuthenticatedLayout />}>
             <Route path="/admin-empresa" element={<AdminEmpresa />} />
             <Route path="/admin-empresa/:section" element={<AdminEmpresa />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute requiredPermissions={['CATALOGOS_VER']} />}>
+          <Route element={<AuthenticatedLayout />}>
+            <Route path="/listas-control" element={<ListasControl />} />
           </Route>
         </Route>
 

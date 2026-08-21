@@ -102,7 +102,7 @@ const ReporteLicencia = () => {
       { id: 'estado-licencia', dato: 'Estado De La Licencia', valor: String(licencia.estado ?? 'NO EMITIDA') },
       { id: 'activada', dato: 'Activada En', valor: String(estado?.activadaEn ?? '-') },
       { id: 'vence', dato: 'Vence', valor: `${String(licencia.venceEn ?? '-')}${dias !== null ? ` (${dias} día(s))` : ''}` },
-      { id: 'heartbeat', dato: 'Última Validación Periódica', valor: String(estado?.ultimoHeartbeatEn ?? '-') },
+      { id: 'heartbeat', dato: 'Último Heartbeat', valor: String(estado?.ultimoHeartbeatEn ?? '-') },
       { id: 'eventos', dato: 'Eventos Registrados', valor: String(eventos.length) },
       { id: 'transacciones', dato: 'Transacciones Del Mes', valor: String(uso?.transaccionesProcesadas ?? 0) },
       { id: 'kyc', dato: 'Consultas KYC Del Mes', valor: String(uso?.consultasKyc ?? 0) },

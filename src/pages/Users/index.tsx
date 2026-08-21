@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { EditOutlined, MailOutlined, PlusOutlined, StopOutlined, TeamOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Form, Input, Modal, Select, Space, Table, Tag, Typography, message } from 'antd';
+import { EditOutlined, MailOutlined, PlusOutlined, ShoppingCartOutlined, StopOutlined, TeamOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Form, Input, Modal, Progress, Select, Space, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { licensingApi, usersApi } from '../../api';
 import { ActionDropdown, useConfirmAction } from '../../components/common';
@@ -27,10 +27,19 @@ const Users = () => {
   const [editingUser, setEditingUser] = useState<Usuario | null>(null);
   const [empresas, setEmpresas] = useState<Record<string, unknown>[]>([]);
   const [preciosRol, setPreciosRol] = useState<Record<string, { precioAnual: string | number }>>({});
+  const [roleLimits, setRoleLimits] = useState<Record<string, number>>({});
+  const [roleCounts, setRoleCounts] = useState<Record<string, number>>({});
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteCodigo, setInviteCodigo] = useState<string | null>(null);
   const [inviteForm] = Form.useForm<{ rol: string; empresaId?: string; email?: string }>();
   const { confirm, confirmationModal } = useConfirmAction();
+
+  const [solicitudOpen, setSolicitudOpen] = useState(false);
+  const [solicitudForm] = Form.useForm<{ tipoRol: string; cantidad: number; motivo: string }>();
+  const [solicitudConfirmOpen, setSolicitudConfirmOpen] = useState(false);
+  const [solicitudPendiente, setSolicitudPendiente] = useState<{ id: number; tipoRol: string; cantidad: number; precioUnitario: number; total: number } | null>(null);
+  const [confirmandoPagoStripe, setConfirmandoPagoStripe] = useState(false);
+  const processedStripeSessionRef = useRef<string | null>(null);
 
   const {
     control,
@@ -49,6 +58,16 @@ const Users = () => {
     },
   });
 
+  const computeRoleCounts = (userData: Usuario[]) => {
+    const counts: Record<string, number> = { ADMINISTRADOR: 0, SUPERVISOR: 0, ANALISTA: 0, AUDITOR: 0 };
+    userData.forEach((u) => {
+      if (u.activo && counts[u.rol] !== undefined) {
+        counts[u.rol]++;
+      }
+    });
+    return counts;
+  };
+
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
@@ -60,6 +79,8 @@ const Users = () => {
       ]);
       setUsers(data);
       setEmpresas(empresaId ? empresasData.filter((empresa) => String(empresa.id) === empresaId) : empresasData);
+      setRoleCounts(computeRoleCounts(data));
+
       const planId = Number((suscripciones[0] as { planId?: unknown } | undefined)?.planId ?? 0);
       if (planId) {
         const precios = await licensingApi.preciosRol(planId);
@@ -74,6 +95,20 @@ const Users = () => {
       } else {
         setPreciosRol({});
       }
+
+      if (empresaId) {
+        try {
+          const limitesData = await licensingApi.limites(empresaId);
+          setRoleLimits({
+            ADMINISTRADOR: Number((limitesData as Record<string, unknown>).limiteAdministradores ?? 0),
+            SUPERVISOR: Number((limitesData as Record<string, unknown>).limiteSupervisores ?? 0),
+            ANALISTA: Number((limitesData as Record<string, unknown>).limiteAnalistas ?? 0),
+            AUDITOR: Number((limitesData as Record<string, unknown>).limiteAuditores ?? 0),
+          });
+        } catch {
+          setRoleLimits({});
+        }
+      }
     } catch (err) {
       setError('Error al cargar los usuarios');
       console.error(err);
@@ -84,6 +119,31 @@ const Users = () => {
 
   useEffect(() => {
     fetchUsers();
+  }, [fetchUsers]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get('rolesPayment');
+    const sessionId = params.get('session_id');
+    if (payment === 'success' && sessionId && processedStripeSessionRef.current !== sessionId) {
+      processedStripeSessionRef.current = sessionId;
+      setConfirmandoPagoStripe(true);
+      licensingApi.confirmarPagoSolicitudRoles(sessionId)
+        .then((respuesta) => {
+          message.success(String(respuesta.mensaje ?? 'Pago confirmado. Los roles adicionales ya estan disponibles.'));
+          window.history.replaceState({}, document.title, window.location.pathname);
+          fetchUsers();
+        })
+        .catch((err) => {
+          message.error(err instanceof Error ? err.message : 'No se pudo confirmar el pago con Stripe');
+          window.history.replaceState({}, document.title, window.location.pathname);
+        })
+        .finally(() => setConfirmandoPagoStripe(false));
+    }
+    if (payment === 'cancel') {
+      message.warning('Pago cancelado en Stripe. La solicitud queda pendiente.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, [fetchUsers]);
 
   const onSubmit = async (data: UsuarioFormData) => {
@@ -148,8 +208,9 @@ const Users = () => {
         email: values.email || undefined,
       });
       setInviteCodigo(String((respuesta as { codigo?: unknown }).codigo ?? ''));
-    } catch (err) {
-      message.error(err instanceof Error ? err.message : 'No se pudo generar la invitacion');
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      message.error(axiosErr.response?.data?.message || 'No se pudo generar la invitacion');
     }
   };
 
@@ -157,6 +218,56 @@ const Users = () => {
     setInviteOpen(false);
     setInviteCodigo(null);
     inviteForm.resetFields();
+  };
+
+  const handleSolicitudRoles = async (values: { tipoRol: string; cantidad: number; motivo: string }) => {
+    if (!empresaId) {
+      message.warning('No se detecto una empresa asociada.');
+      return;
+    }
+    try {
+      const respuesta = await licensingApi.crearSolicitudRoles({
+        tipoRol: values.tipoRol,
+        cantidad: values.cantidad,
+        motivo: values.motivo,
+      });
+      const precioUnitario = Number((preciosRol[values.tipoRol]?.precioAnual ?? 0));
+      setSolicitudPendiente({
+        id: Number(respuesta.id ?? respuesta.solicitudId ?? 0),
+        tipoRol: values.tipoRol,
+        cantidad: values.cantidad,
+        precioUnitario,
+        total: precioUnitario * values.cantidad,
+      });
+      setSolicitudOpen(false);
+      setSolicitudConfirmOpen(true);
+      solicitudForm.resetFields();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'No se pudo crear la solicitud');
+    }
+  };
+
+  const handlePagarSolicitud = async () => {
+    if (!solicitudPendiente) return;
+    try {
+      const currentUrl = `${window.location.origin}/users`;
+      const respuesta = await licensingApi.pagarSolicitudRoles(solicitudPendiente.id, {
+        successUrl: `${currentUrl}?rolesPayment=success`,
+        cancelUrl: `${currentUrl}?rolesPayment=cancel`,
+      });
+      const checkoutUrl = String(respuesta.checkoutUrl ?? '');
+      if (checkoutUrl) {
+        message.success('Sesion de pago creada. Redirigiendo a Stripe Checkout.');
+        window.location.href = checkoutUrl;
+        return;
+      }
+      message.warning(String(respuesta.mensaje ?? 'No se pudo abrir Stripe Checkout.'));
+      setSolicitudConfirmOpen(false);
+      setSolicitudPendiente(null);
+      fetchUsers();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'No se pudo procesar el pago');
+    }
   };
 
   const pricingColumns: ColumnsType<{ rol: string; precioAnual: string | number }> = [
@@ -228,6 +339,12 @@ const Users = () => {
           }}>
             Generar Invitación
           </Button>
+          <Button icon={<ShoppingCartOutlined />} onClick={() => {
+            solicitudForm.resetFields();
+            setSolicitudOpen(true);
+          }}>
+            Solicitar Roles
+          </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
             Nuevo Usuario
           </Button>
@@ -235,6 +352,35 @@ const Users = () => {
       </Space>
 
       {error && <Alert type="error" showIcon message={error} action={<Button onClick={fetchUsers}>Reintentar</Button>} />}
+
+      {empresaId && Object.keys(roleLimits).length > 0 && (
+        <Card title="Limites de Roles por Plan" size="small">
+          <Space wrap size="middle">
+            {roleOptions.map((opt) => {
+              const limit = roleLimits[opt.value] || 0;
+              const count = roleCounts[opt.value] || 0;
+              const pct = limit > 0 ? Math.min(100, Math.round((count / limit) * 100)) : 0;
+              const exceeded = limit > 0 && count >= limit;
+              return (
+                <div key={opt.value} style={{ minWidth: 160 }}>
+                  <Space size={4}>
+                    <Tag color={opt.value === 'ADMINISTRADOR' ? 'gold' : 'blue'}>{opt.label}</Tag>
+                    <Typography.Text type={exceeded ? 'danger' : undefined}>
+                      {count}/{limit}
+                    </Typography.Text>
+                  </Space>
+                  <Progress
+                    percent={pct}
+                    size="small"
+                    status={exceeded ? 'exception' : 'normal'}
+                    showInfo={false}
+                  />
+                </div>
+              );
+            })}
+          </Space>
+        </Card>
+      )}
 
       <Card>
         <Table rowKey="id" loading={loading} columns={columns} dataSource={users} pagination={{ pageSize: 10 }} />
@@ -258,9 +404,23 @@ const Users = () => {
               label="Rol"
               validateStatus={errors.rol ? 'error' : undefined}
               help={errors.rol?.message}
-              extra={field.value && preciosRol[field.value] && !editingUser ? `Precio anual adicional para este rol: ${formatCurrency(Number(preciosRol[field.value].precioAnual))}` : undefined}
+              extra={(() => {
+                const limit = roleLimits[field.value] || 0;
+                const count = roleCounts[field.value] || 0;
+                if (limit > 0 && !editingUser) {
+                  if (count >= limit) return <Typography.Text type="danger">Limite alcanzado. Solicita roles adicionales.</Typography.Text>;
+                  return `Usados: ${count}/${limit}. Precio adicional: ${formatCurrency(Number(preciosRol[field.value]?.precioAnual ?? 0))}`;
+                }
+                return field.value && preciosRol[field.value] && !editingUser ? `Precio anual adicional para este rol: ${formatCurrency(Number(preciosRol[field.value].precioAnual))}` : undefined;
+              })()}
             >
-              <Select {...field} options={roleOptions} />
+              <Select
+                {...field}
+                options={roleOptions.map((opt) => ({
+                  ...opt,
+                  disabled: !editingUser && roleLimits[opt.value] !== undefined && (roleCounts[opt.value] || 0) >= (roleLimits[opt.value] || 0),
+                }))}
+              />
             </Form.Item>
           )} />
           <Controller
@@ -313,9 +473,10 @@ const Users = () => {
             message="Invitación generada"
             description={
               <Space direction="vertical">
-                <Typography.Text>Comparte este código con el usuario invitado (se usa en el registro con invitación):</Typography.Text>
-                <Typography.Text code copyable style={{ fontSize: 16 }}>{inviteCodigo}</Typography.Text>
-                <Typography.Text type="secondary">Si cargaste un email, también se envía la invitación por correo.</Typography.Text>
+                <Typography.Text>Comparte este enlace con el usuario invitado:</Typography.Text>
+                <Typography.Text code copyable style={{ fontSize: 14 }}>{`${window.location.origin}/invitacion?codigo=${inviteCodigo}`}</Typography.Text>
+                <Typography.Text type="secondary">O comparte solo el codigo: <Typography.Text code copyable>{inviteCodigo}</Typography.Text></Typography.Text>
+                <Typography.Text type="secondary">Si cargaste un email, tambien se envia la invitacion por correo.</Typography.Text>
               </Space>
             }
           />
@@ -335,6 +496,76 @@ const Users = () => {
               <Input placeholder="correo@ejemplo.com" />
             </Form.Item>
           </Form>
+        )}
+      </Modal>
+
+      <Modal
+        open={solicitudOpen}
+        onCancel={() => setSolicitudOpen(false)}
+        title={<Space><ShoppingCartOutlined />Solicitar Roles Adicionales</Space>}
+        footer={[
+          <Button key="cancel" onClick={() => setSolicitudOpen(false)}>Cancelar</Button>,
+          <Button key="ok" type="primary" onClick={() => solicitudForm.submit()}>Crear Solicitud</Button>,
+        ]}
+        centered
+        width={480}
+      >
+        <Form form={solicitudForm} layout="vertical" onFinish={handleSolicitudRoles} requiredMark={false}>
+          <Form.Item label="Tipo de Rol" name="tipoRol" rules={[{ required: true, message: 'Selecciona el tipo de rol' }]}>
+            <Select
+              options={roleOptions.map((opt) => {
+                const limit = roleLimits[opt.value] || 0;
+                const count = roleCounts[opt.value] || 0;
+                const precio = Number(preciosRol[opt.value]?.precioAnual ?? 0);
+                return {
+                  value: opt.value,
+                  label: `${opt.label} — ${formatCurrency(precio)}/año — Usados: ${count}/${limit}`,
+                };
+              })}
+              placeholder="Selecciona el rol"
+            />
+          </Form.Item>
+          <Form.Item label="Cantidad" name="cantidad" rules={[{ required: true, message: 'Indica la cantidad' }]}>
+            <Input type="number" min={1} max={100} placeholder="1" />
+          </Form.Item>
+          <Form.Item label="Motivo" name="motivo" rules={[{ required: true, message: 'Indica el motivo de la solicitud' }]}>
+            <Input.TextArea rows={3} placeholder="Ej: Necesito 2 supervisores adicionales para cubrir el nuevo equipo..." />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        open={solicitudConfirmOpen}
+        onCancel={() => { setSolicitudConfirmOpen(false); setSolicitudPendiente(null); }}
+        title="Confirmar Pago"
+        footer={[
+          <Button key="cancel" onClick={() => { setSolicitudConfirmOpen(false); setSolicitudPendiente(null); }}>Cancelar</Button>,
+          <Button key="pay" type="primary" onClick={handlePagarSolicitud} loading={confirmandoPagoStripe}>Pagar Con Stripe</Button>,
+        ]}
+        centered
+        width={420}
+      >
+        {solicitudPendiente && (
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Typography.Paragraph>
+              Vas a adquirir <Typography.Text strong>{solicitudPendiente.cantidad} {roleLabel(solicitudPendiente.tipoRol)}</Typography.Text> adicionales.
+            </Typography.Paragraph>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                <Typography.Text>Precio unitario:</Typography.Text>
+                <Typography.Text>{formatCurrency(solicitudPendiente.precioUnitario)}/año</Typography.Text>
+              </Space>
+              <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                <Typography.Text>Cantidad:</Typography.Text>
+                <Typography.Text>{solicitudPendiente.cantidad}</Typography.Text>
+              </Space>
+              <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                <Typography.Text strong>Total:</Typography.Text>
+                <Typography.Text strong>{formatCurrency(solicitudPendiente.total)}</Typography.Text>
+              </Space>
+            </Space>
+            <Alert type="info" showIcon message="Pago Con Stripe" description="Se abrirá Stripe Checkout. Al volver, Regula confirmará la sesión y habilitará los cupos comprados." />
+          </Space>
         )}
       </Modal>
 

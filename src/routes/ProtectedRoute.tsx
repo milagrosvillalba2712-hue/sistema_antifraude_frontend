@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store';
 import type { Permission, Rol } from '../types';
 
@@ -6,13 +6,21 @@ interface ProtectedRouteProps {
   requiredPermissions?: Permission[];
   requiredRoles?: Rol[];
   blockedRoles?: Rol[];
+  skipTerminosCheck?: boolean;
 }
 
-export const ProtectedRoute = ({ requiredPermissions, requiredRoles, blockedRoles }: ProtectedRouteProps) => {
-  const { isAuthenticated, user } = useAuthStore();
+const PUBLIC_AFTER_AUTH = ['/acepte-terminos', '/unauthorized'];
+
+export const ProtectedRoute = ({ requiredPermissions, requiredRoles, blockedRoles, skipTerminosCheck }: ProtectedRouteProps) => {
+  const { isAuthenticated, user, aceptoTerminos } = useAuthStore();
+  const location = useLocation();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!skipTerminosCheck && !aceptoTerminos && !PUBLIC_AFTER_AUTH.includes(location.pathname)) {
+    return <Navigate to="/acepte-terminos" replace />;
   }
 
   if (requiredRoles?.length && (!user || !requiredRoles.includes(user.rol))) {

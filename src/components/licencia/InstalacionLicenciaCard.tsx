@@ -4,12 +4,9 @@ import {
   Button,
   Card,
   Descriptions,
-  Empty,
   Space,
   Spin,
   Tag,
-  Timeline,
-  Typography,
   message,
 } from 'antd';
 import {
@@ -17,7 +14,6 @@ import {
   KeyOutlined,
   ReloadOutlined,
   SafetyCertificateOutlined,
-  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { licensingLocalApi } from '../../api';
 import { INSTALACION_STORAGE_KEY, fingerprintNavegador } from './constants';
@@ -54,19 +50,14 @@ const InstalacionLicenciaCard = ({ empresaId, suscripcionActivaId }: Props) => {
   const [instalacionId, setInstalacionId] = useState<string | null>(() => localStorage.getItem(INSTALACION_STORAGE_KEY));
   const [estado, setEstado] = useState<EstadoInstalacion | null>(null);
   const [validacion, setValidacion] = useState<Record<string, unknown> | null>(null);
-  const [eventos, setEventos] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(false);
   const [accion, setAccion] = useState<string | null>(null);
 
   const cargar = useCallback(async (id: string) => {
     setLoading(true);
     try {
-      const [estadoData, eventosData] = await Promise.all([
-        licensingLocalApi.estado(id),
-        licensingLocalApi.eventos(id).catch(() => [] as Record<string, unknown>[]),
-      ]);
+      const estadoData = await licensingLocalApi.estado(id);
       setEstado(estadoData as EstadoInstalacion);
-      setEventos(eventosData);
       try {
         setValidacion(await licensingLocalApi.validar(id, true));
       } catch {
@@ -125,20 +116,6 @@ const InstalacionLicenciaCard = ({ empresaId, suscripcionActivaId }: Props) => {
     }
   };
 
-  const handleHeartbeat = async () => {
-    if (!instalacionId) return;
-    setAccion('heartbeat');
-    try {
-      const respuesta = await licensingLocalApi.heartbeat({ instalacionId });
-      message.success(`Validación periódica registrada: ${respuesta.ultimoHeartbeatEn}`);
-      await cargar(instalacionId);
-    } catch (error: unknown) {
-      message.error(error instanceof Error ? error.message : 'No se pudo registrar la validación periódica');
-    } finally {
-      setAccion(null);
-    }
-  };
-
   const modo = validacion?.modo ? tagEstado(String(validacion.modo)) : null;
   const licencia = estado?.licencia;
 
@@ -184,7 +161,7 @@ const InstalacionLicenciaCard = ({ empresaId, suscripcionActivaId }: Props) => {
                 { key: 'estado', label: 'Estado De Instalación', children: <Tag>{estado?.estadoInstalacion || '-'}</Tag> },
                 { key: 'clon', label: 'Clon Detectado', children: estado?.clonDetectado ? 'Sí' : 'No' },
                 { key: 'activada', label: 'Activada En', children: estado?.activadaEn || '-' },
-                { key: 'heartbeat', label: 'Última Validación Periódica', children: estado?.ultimoHeartbeatEn || '-' },
+                { key: 'heartbeat', label: 'Último Heartbeat', children: estado?.ultimoHeartbeatEn || '-' },
                 { key: 'controlPlane', label: 'Control Plane', children: estado?.controlPlane?.habilitado ? 'Habilitado' : 'Offline' },
                 { key: 'plan', label: 'Plan', children: String(licencia?.planCodigo ?? '-') },
                 { key: 'vence', label: 'Vence', children: String(licencia?.venceEn ?? '-') },
@@ -198,50 +175,7 @@ const InstalacionLicenciaCard = ({ empresaId, suscripcionActivaId }: Props) => {
                   Activar Licencia
                 </Button>
               )}
-              <Button icon={<ThunderboltOutlined />} loading={accion === 'heartbeat'} onClick={handleHeartbeat}>
-                Validación Periódica
-              </Button>
-              <Button
-                icon={<ReloadOutlined />}
-                loading={accion === 'validar'}
-                onClick={async () => {
-                  if (!instalacionId) return;
-                  setAccion('validar');
-                  try {
-                    setValidacion(await licensingLocalApi.validar(instalacionId, true));
-                  } catch {
-                    message.warning('No hay licencia emitida aún.');
-                  } finally {
-                    setAccion(null);
-                  }
-                }}
-              >
-                Validar
-              </Button>
             </Space>
-            <div>
-              <Typography.Title level={5}>Ultimos Eventos</Typography.Title>
-              {eventos.length === 0 ? (
-                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Sin eventos registrados" />
-              ) : (
-                <Timeline
-                  items={eventos.slice(0, 10).map((evento) => ({
-                    color: evento.tipo === 'BLOQUEADA' || evento.tipo === 'ERROR' ? 'red' : 'blue',
-                    children: (
-                      <div>
-                        <Typography.Text strong>{String(evento.tipo ?? 'EVENTO')}</Typography.Text>
-                        <div>
-                          <Typography.Text type="secondary">{String(evento.detalle ?? '')}</Typography.Text>
-                        </div>
-                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                          {String(evento.fechaEvento ?? '')}
-                        </Typography.Text>
-                      </div>
-                    ),
-                  }))}
-                />
-              )}
-            </div>
           </Space>
         )}
       </Spin>

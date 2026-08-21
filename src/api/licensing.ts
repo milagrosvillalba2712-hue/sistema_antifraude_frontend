@@ -37,4 +37,26 @@ export const licensingApi = {
     const { data } = await api.get(`/licensing/planes/${planId}/precios-rol`);
     return data;
   },
+
+  // Solicitud de roles adicionales
+  verificarRoles: async (rolCodigo: string): Promise<Record<string, unknown>> => {
+    const { data } = await api.get('/admin-empresa/solicitud-roles/verificar', { params: { rolCodigo } });
+    return data;
+  },
+  crearSolicitudRoles: async (datos: { tipoRol: string; cantidad: number; motivo: string }): Promise<Record<string, unknown>> => {
+    const { data } = await api.post('/admin-empresa/solicitud-roles', {
+      rolCodigo: datos.tipoRol,
+      cantidad: datos.cantidad,
+      observacion: datos.motivo,
+    });
+    return data;
+  },
+  pagarSolicitudRoles: async (solicitudId: number, body?: { successUrl?: string; cancelUrl?: string }): Promise<Record<string, unknown>> => {
+    const { data } = await api.post(`/admin-empresa/solicitud-roles/${solicitudId}/pagar`, body ?? {});
+    return data;
+  },
+  confirmarPagoSolicitudRoles: async (sessionId: string): Promise<Record<string, unknown>> => {
+    const { data } = await api.post('/admin-empresa/solicitud-roles/stripe-confirmar', { sessionId });
+    return data;
+  },
 };

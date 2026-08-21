@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Button, Card, Form, Input, Result, Space, Typography, message } from 'antd';
 import { Link, useSearchParams } from 'react-router-dom';
 import { authApi } from '../../api';
-import { RegulaIcon } from '../../components/common';
+import { RecaptchaBox, RegulaIcon } from '../../components/common';
+import { PasswordStrength, evaluatePassword } from '../Invitacion/PasswordStrength';
 
 interface ResetValues {
   password: string;
@@ -12,6 +13,8 @@ interface ResetValues {
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const [done, setDone] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [passwordValue, setPasswordValue] = useState('');
   const [form] = Form.useForm<ResetValues>();
 
   const onSubmit = async (values: ResetValues) => {
@@ -20,11 +23,16 @@ const ResetPassword = () => {
       message.error('Falta el codigo de recuperacion en el enlace.');
       return;
     }
+    if (!captchaToken) {
+      message.error('Completa la verificación de captcha');
+      return;
+    }
     try {
-      await authApi.resetPassword(codigo, values.password);
+      await authApi.resetPassword(codigo, values.password, captchaToken);
       setDone(true);
     } catch (error: unknown) {
-      message.error(error instanceof Error ? error.message : 'No se pudo restablecer la contraseña');
+      const err = error as { response?: { data?: { mensaje?: string; message?: string } } };
+      message.error(err.response?.data?.mensaje || err.response?.data?.message || 'No se pudo restablecer la contraseña');
     }
   };
 
@@ -62,12 +70,25 @@ const ResetPassword = () => {
             name="password"
             rules={[
               { required: true, message: 'Ingresa una contraseña' },
-              { min: 10, message: 'Mínimo 10 caracteres' },
+              {
+                validator: (_, value) => {
+                  if (!value) return Promise.resolve();
+                  const result = evaluatePassword(value);
+                  return result.issues.length === 0
+                    ? Promise.resolve()
+                    : Promise.reject(new Error(result.issues.join(' · ')));
+                },
+              },
             ]}
             dependencies={['confirmPassword']}
           >
-            <Input.Password placeholder="Mínimo 10 caracteres" autoComplete="new-password" />
+            <Input.Password
+              placeholder="Mínimo 12 caracteres, mayúscula, número y carácter especial"
+              autoComplete="new-password"
+              onChange={(event) => setPasswordValue(event.target.value)}
+            />
           </Form.Item>
+          <PasswordStrength password={passwordValue} />
           <Form.Item
             label="Confirmar Contraseña"
             name="confirmPassword"
@@ -84,7 +105,8 @@ const ResetPassword = () => {
           >
             <Input.Password placeholder="Repite la contraseña" autoComplete="new-password" />
           </Form.Item>
-          <Button type="primary" htmlType="submit" block>
+          <RecaptchaBox onChange={setCaptchaToken} />
+          <Button type="primary" htmlType="submit" block disabled={!captchaToken}>
             Restablecer Contraseña
           </Button>
         </Form>

@@ -528,6 +528,20 @@ export interface ErrorResponse {
   path: string;
   timestamp: string;
   fieldErrors?: Record<string, string>;
+  detalles?: Record<string, unknown>;
+}
+
+export interface LoginErrorDetails {
+  intentosFallidos?: number;
+  maxIntentos?: number;
+  bloqueadoHasta?: string;
+  minutosRestantes?: number;
+}
+
+export interface LoginErrorResponse {
+  codigo_error?: string;
+  message?: string;
+  detalles?: LoginErrorDetails;
 }
 
 export interface SimuladorRequest {
@@ -633,4 +647,119 @@ export interface ReglaHistorialVersion {
   usuarioId: UUID;
   usuarioNombre?: string;
   fechaHora: string;
+}
+
+export type TipoDocumentoLegal = 'TERMINOS' | 'POLITICA_PRIVACIDAD';
+
+export type EstadoJobLocal = 'ACTIVO' | 'INACTIVO';
+
+export type UnidadFrecuenciaJob = 'MINUTOS' | 'HORAS' | 'DIAS';
+
+export interface JobLocalDetalle {
+  frecuenciaValor?: number | null;
+  frecuenciaUnidad?: UnidadFrecuenciaJob | null;
+  hora?: string | null;
+  cron?: string | null;
+  ultimaEjecucion?: string | null;
+  proximaEjecucion?: string | null;
+  ultimoResultado?: string | null;
+  ultimoDetalle?: string | null;
+}
+
+export interface JobLocal {
+  id: number | string;
+  tipo: string;
+  codigo: string;
+  nombre: string;
+  descripcion?: string | null;
+  estado: EstadoJobLocal;
+  editable: boolean;
+  orden: number;
+  detalle: JobLocalDetalle;
+}
+
+export interface JobLocalFrecuencia {
+  valor: number;
+  unidad: UnidadFrecuenciaJob;
+  hora?: string | null;
+  cron?: string | null;
+}
+
+export interface JobLocalUpdateRequest {
+  estado?: EstadoJobLocal;
+  frecuencia?: JobLocalFrecuencia;
+}
+
+export type TipoListaControl = 'WHITELIST' | 'BLACKLIST';
+export type EstadoListaControl = 'ACTIVA' | 'INACTIVA' | 'VENCIDA';
+export type TipoEntidadControl = 'PERSONA' | 'EMPRESA' | 'CUENTA' | 'DOCUMENTO' | 'WALLET' | 'ALIAS';
+export type TipoIdentificadorControl = 'NOMBRE' | 'DOCUMENTO' | 'CUENTA' | 'WALLET' | 'ALIAS';
+export type EstadoElementoControl = 'ACTIVO' | 'INACTIVO' | 'VENCIDO';
+
+export interface ListaControl {
+  id: number;
+  tipoLista: TipoListaControl;
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+  estado: EstadoListaControl;
+  prioridad: number;
+  fechaVigenciaDesde: string | null;
+  fechaVigenciaHasta: string | null;
+  totalElementos: number;
+}
+
+export interface ListaControlRequest {
+  tipoLista: TipoListaControl;
+  codigo: string;
+  nombre: string;
+  descripcion?: string;
+  estado?: EstadoListaControl;
+  prioridad?: number;
+  fechaVigenciaDesde?: string | null;
+  fechaVigenciaHasta?: string | null;
+}
+
+export interface ElementoListaControl {
+  id: number;
+  listaId: number;
+  tipoLista: TipoListaControl;
+  tipoEntidad: TipoEntidadControl;
+  tipoIdentificador: TipoIdentificadorControl;
+  valorOriginal: string;
+  valorNormalizado: string;
+  nombreMostrado: string | null;
+  documentoMostrado: string | null;
+  motivo: string | null;
+  observacion: string | null;
+  fuente: string;
+  severidad: string;
+  estado: EstadoElementoControl;
+  fechaVigenciaDesde: string | null;
+  fechaVigenciaHasta: string | null;
+}
+
+export interface ElementoListaControlRequest {
+  tipoEntidad?: TipoEntidadControl;
+  tipoIdentificador: TipoIdentificadorControl;
+  valor: string;
+  nombreMostrado?: string;
+  documentoMostrado?: string;
+  motivo?: string;
+  observacion?: string;
+  fuente?: string;
+  severidad?: string;
+  estado?: EstadoElementoControl;
+}
+
+export interface ImportacionListaControl {
+  id: number;
+  listaId: number;
+  nombreArchivo: string;
+  tipoArchivo: string;
+  estado: string;
+  totalRegistros: number;
+  registrosValidos: number;
+  registrosInvalidos: number;
+  erroresJson: string;
 }

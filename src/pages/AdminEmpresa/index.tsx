@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import {
   ApiOutlined,
   CalendarOutlined,
@@ -56,6 +56,7 @@ const sectionMeta: Record<AdminEmpresaSection, { title: string; description: str
 
 const AdminEmpresa = () => {
   const { section } = useParams();
+  const [searchParams] = useSearchParams();
   const activeSection = normalizeSection(section);
   const { user } = useAuthStore();
   const { confirm, confirmationModal } = useConfirmAction();
@@ -69,6 +70,7 @@ const AdminEmpresa = () => {
   const [configuracion, setConfiguracion] = useState<Record<string, unknown>>({});
   const [auditoria, setAuditoria] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
+  const processedStripeSessionRef = useRef<string | null>(null);
 
   const suscripcion = asRecord(summary.suscripcion);
   const plan = asRecord(summary.plan);
@@ -116,6 +118,25 @@ const AdminEmpresa = () => {
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    const payment = searchParams.get('payment');
+    const sessionId = searchParams.get('session_id');
+    if (payment === 'success' && sessionId && processedStripeSessionRef.current !== sessionId) {
+      processedStripeSessionRef.current = sessionId;
+      adminEmpresaApi.confirmarPagoStripe(sessionId)
+        .then((respuesta) => {
+          message.success(String(respuesta.mensaje ?? 'Pago revisado correctamente.'));
+          return load();
+        })
+        .catch((error: unknown) => {
+          const err = error as { response?: { data?: { mensaje?: string; message?: string } } };
+          message.error(err.response?.data?.mensaje || err.response?.data?.message || 'No se pudo confirmar el pago con Stripe');
+        });
+    } else if (payment === 'cancel') {
+      message.warning('Pago cancelado en Stripe. La solicitud queda pendiente.');
+    }
+  }, [searchParams]);
 
   const validarLicencia = () => {
     confirm({

@@ -53,13 +53,14 @@ export const useAuth = () => {
         response?: {
           data?: {
             message?: string;
+            mensaje?: string;
             codigo_error?: string;
             detalles?: LoginErrorDetails;
           };
         };
       };
       const codigo = err.response?.data?.codigo_error;
-      const message = err.response?.data?.message || 'Error al iniciar sesion';
+      const message = err.response?.data?.mensaje || err.response?.data?.message || 'Error al iniciar sesion';
 
       let field: 'email' | 'password' | undefined;
       if (codigo === 'USER_NOT_FOUND' || codigo === 'ACCOUNT_DISABLED') {

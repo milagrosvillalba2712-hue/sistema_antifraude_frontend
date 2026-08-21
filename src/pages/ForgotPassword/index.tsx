@@ -13,7 +13,8 @@ const ForgotPassword = () => {
       await authApi.forgotPassword(values.email);
       setDone(true);
     } catch (error: unknown) {
-      message.error(error instanceof Error ? error.message : 'No se pudo solicitar la recuperacion');
+      const err = error as { response?: { data?: { mensaje?: string; message?: string } } };
+      message.error(err.response?.data?.mensaje || err.response?.data?.message || 'No se pudo solicitar la recuperación');
     }
   };
 
@@ -23,7 +24,7 @@ const ForgotPassword = () => {
         <Result
           status="success"
           title="Solicitud Enviada"
-          subTitle="Si el correo electrónico está registrado, recibirás un enlace para restablecer tu contraseña. En modo demo también se imprime en consola del Backend."
+          subTitle="El correo fue verificado. Recibirás un enlace para restablecer tu contraseña. En modo demo también se imprime en consola del Backend."
           extra={
             <Link to="/login">
               <Button type="primary">Volver Al Login</Button>
@@ -55,7 +56,7 @@ const ForgotPassword = () => {
         </Form>
 
         <Typography.Text style={{ textAlign: 'center', display: 'block' }}>
-          <Link to="/login">Volver al login</Link> · <Link to="/register">Registrarme</Link>
+          <Link to="/login">Volver al login</Link>
         </Typography.Text>
       </Space>
     </Card>

@@ -88,23 +88,19 @@ const Login = () => {
         )}
 
         <Form form={form} layout="vertical" onFinish={onSubmit} requiredMark={false}>
-          <Form.Item label="Correo Electronico" name="email" rules={[{ required: true, message: 'Ingresa tu correo electronico' }, { type: 'email', message: 'Correo electronico invalido' }]}>
+          <Form.Item label="Correo Electrónico" name="email" rules={[{ required: true, message: 'Ingresa tu correo electrónico' }, { type: 'email', message: 'Correo electrónico inválido' }]}>
             <Input placeholder="correo@ejemplo.com" autoComplete="email" disabled={!!lockedUntil} />
           </Form.Item>
-          <Form.Item label="Contrasena" name="password" rules={[{ required: true, message: 'Ingresa tu contrasena' }]}>
-            <Input.Password placeholder="Contrasena" autoComplete="current-password" disabled={!!lockedUntil} />
+          <Form.Item label="Contraseña" name="password" rules={[{ required: true, message: 'Ingresa tu contraseña' }]}>
+            <Input.Password placeholder="Contraseña" autoComplete="current-password" disabled={!!lockedUntil} />
           </Form.Item>
           <Button type="primary" htmlType="submit" block loading={form.isFieldsValidating()} disabled={!!lockedUntil}>
-            Iniciar Sesion
+            Iniciar Sesión
           </Button>
         </Form>
 
         <Typography.Text style={{ textAlign: 'center', display: 'block' }}>
-          <Link to="/forgot-password">Olvidaste tu contrasena?</Link>
-          <span> · </span>
-          <Link to="/register">Registrarme</Link>
-          <span> · </span>
-          <Link to="/invitacion">Tengo codigo de invitacion</Link>
+          <Link to="/forgot-password">¿Olvidaste tu contraseña?</Link>
         </Typography.Text>
 
         <Alert
@@ -115,15 +111,15 @@ const Login = () => {
             <Space direction="vertical" size={2}>
               <Typography.Text>Administrador: administrador@santaclara.local</Typography.Text>
               <Typography.Text>Auditor: beatriz.morales@santaclara.local</Typography.Text>
-              <Typography.Text>Contrasena: Regula2026!</Typography.Text>
+              <Typography.Text>Contraseña: Regula2026!</Typography.Text>
             </Space>
           }
         />
 
         <Typography.Text type="secondary" style={{ textAlign: 'center', display: 'block', fontSize: 12 }}>
-          <Link to="/documentos-legales">Terminos y Condiciones</Link>
+          <Link to="/documentos-legales">Términos y Condiciones</Link>
           <span> · </span>
-          <Link to="/documentos-legales/privacidad">Politica de Privacidad</Link>
+          <Link to="/documentos-legales/privacidad">Política de Privacidad</Link>
         </Typography.Text>
       </Space>
     </Card>

@@ -18,9 +18,11 @@ import {
   CreditCardOutlined,
   DatabaseOutlined,
   SafetyCertificateOutlined,
+  LogoutOutlined,
 } from '@ant-design/icons';
-import { Avatar, Badge, Button, Drawer, Grid, Layout, Menu, Space, Typography } from 'antd';
+import { Avatar, Badge, Button, Drawer, Grid, Layout, Menu, Popconfirm, Space, Typography } from 'antd';
 import { useAuthStore } from '../store';
+import { useAuth } from '../hooks';
 import { RegulaIcon } from '../components/common';
 import { alertsApi } from '../api';
 
@@ -66,6 +68,7 @@ export const AuthenticatedLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, hasPermission } = useAuthStore();
+  const { signOut } = useAuth();
 
   const baseNavigation = user?.rol === 'ADMINISTRADOR'
     ? adminEmpresaNavigation
@@ -167,18 +170,31 @@ export const AuthenticatedLayout = () => {
         </div>
         {menu}
         <div style={{ position: 'absolute', bottom: 0, width: '100%', padding: 16, borderTop: '1px solid rgba(255,255,255,0.12)' }}>
-          <Link to="/profile" style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', gap: 10, color: '#fff' }}>
-            <Space>
-              <Avatar style={{ backgroundColor: '#de7426' }}>{userInitial}</Avatar>
-              {!collapsed && (
-                <div style={{ maxWidth: 160 }}>
-                  <Typography.Text ellipsis style={{ color: '#fff', display: 'block', fontSize: 12, fontWeight: 700 }}>{user?.email}</Typography.Text>
-                  <Typography.Text ellipsis style={{ color: 'rgba(255,255,255,0.45)', display: 'block', fontSize: 11 }}>{user?.rol}</Typography.Text>
-                </div>
-              )}
-            </Space>
-            {!collapsed && <SettingOutlined style={{ color: 'rgba(255,255,255,0.45)' }} />}
-          </Link>
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <Link to="/profile" style={{ display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'space-between', gap: 10, color: '#fff' }}>
+              <Space>
+                <Avatar style={{ backgroundColor: '#de7426' }}>{userInitial}</Avatar>
+                {!collapsed && (
+                  <div style={{ maxWidth: 160 }}>
+                    <Typography.Text ellipsis style={{ color: '#fff', display: 'block', fontSize: 12, fontWeight: 700 }}>{user?.email}</Typography.Text>
+                    <Typography.Text ellipsis style={{ color: 'rgba(255,255,255,0.45)', display: 'block', fontSize: 11 }}>{user?.rol}</Typography.Text>
+                  </div>
+                )}
+              </Space>
+              {!collapsed && <SettingOutlined style={{ color: 'rgba(255,255,255,0.45)' }} />}
+            </Link>
+            {!collapsed && (
+              <Popconfirm
+                title="Cerrar Sesión"
+                description="Se cerrará tu sesión actual en Regula."
+                okText="Cerrar Sesión"
+                cancelText="Cancelar"
+                onConfirm={signOut}
+              >
+                <Button block danger ghost icon={<LogoutOutlined />}>Cerrar Sesión</Button>
+              </Popconfirm>
+            )}
+          </Space>
         </div>
       </Sider>
 
@@ -205,6 +221,15 @@ export const AuthenticatedLayout = () => {
               <AlertOutlined style={{ fontSize: 18, color: '#4e616e' }} />
             </Badge>
             <Avatar size="small" style={{ backgroundColor: '#de7426' }}>{userInitial}</Avatar>
+            <Popconfirm
+              title="Cerrar Sesión"
+              description="Se cerrará tu sesión actual en Regula."
+              okText="Cerrar Sesión"
+              cancelText="Cancelar"
+              onConfirm={signOut}
+            >
+              <Button icon={<LogoutOutlined />}>Cerrar Sesión</Button>
+            </Popconfirm>
           </Space>
         </Header>
         <Content style={{ padding: 24, minHeight: 'calc(100vh - 64px)' }}>

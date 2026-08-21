@@ -48,8 +48,8 @@ export const authApi = {
     return response.data;
   },
 
-  resetPassword: async (codigo: string, nuevaPassword: string): Promise<Mensaje> => {
-    const response = await api.post<Mensaje>('/auth/reset-password', { codigo, nuevaPassword });
+  resetPassword: async (codigo: string, nuevaPassword: string, recaptchaToken: string): Promise<Mensaje> => {
+    const response = await api.post<Mensaje>('/auth/reset-password', { codigo, nuevaPassword, recaptchaToken });
     return response.data;
   },
 

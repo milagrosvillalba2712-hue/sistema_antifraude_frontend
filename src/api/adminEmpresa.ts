@@ -26,6 +26,10 @@ export const adminEmpresaApi = {
     const { data } = await api.post('/admin-empresa/pagos/stripe-checkout', body ?? {});
     return data;
   },
+  confirmarPagoStripe: async (sessionId: string): Promise<Record<string, unknown>> => {
+    const { data } = await api.post('/admin-empresa/pagos/stripe-confirmar', { sessionId });
+    return data;
+  },
   apis: async (): Promise<Record<string, unknown>> => {
     const { data } = await api.get('/admin-empresa/apis');
     return data;

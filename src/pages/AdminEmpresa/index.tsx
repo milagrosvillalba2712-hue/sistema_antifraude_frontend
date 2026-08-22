@@ -62,6 +62,7 @@ const AdminEmpresa = () => {
   const { confirm, confirmationModal } = useConfirmAction();
   const [summary, setSummary] = useState<Record<string, unknown>>({});
   const [pagos, setPagos] = useState<Record<string, unknown>[]>([]);
+  const [recibos, setRecibos] = useState<Record<string, unknown>[]>([]);
   const [consumo, setConsumo] = useState<Record<string, unknown>>({});
   const [apis, setApis] = useState<Record<string, unknown>>({});
   const [errores, setErrores] = useState<Record<string, unknown>>({});
@@ -89,9 +90,10 @@ const AdminEmpresa = () => {
 
   const load = async () => {
     setLoading(true);
-    const [summaryData, pagosData, consumoData, apisData, erroresData, systemOverviewData, conectividadData, configuracionData, auditoriaData] = await Promise.all([
+    const [summaryData, pagosData, recibosData, consumoData, apisData, erroresData, systemOverviewData, conectividadData, configuracionData, auditoriaData] = await Promise.all([
       safeLoad('resumen', adminEmpresaApi.resumen, {}),
       safeLoad('pagos', adminEmpresaApi.pagos, []),
+      safeLoad('recibos', adminEmpresaApi.recibos, {}),
       safeLoad('consumo', adminEmpresaApi.consumo, {}),
       safeLoad('apis', adminEmpresaApi.apis, {}),
       safeLoad('errores', adminEmpresaApi.errores, emptyErrores()),
@@ -102,6 +104,7 @@ const AdminEmpresa = () => {
     ]);
     setSummary(summaryData);
     setPagos(pagosData);
+    setRecibos(arrayValue(asRecord(recibosData).items));
     setConsumo(consumoData);
     setApis(apisData);
     setErrores(erroresData);
@@ -222,6 +225,7 @@ const AdminEmpresa = () => {
           plan={plan}
           licencia={licencia}
           pagos={pagos}
+          recibos={recibos}
           diasRestantes={diasRestantes}
           onValidarLicencia={validarLicencia}
           onPagarStripe={iniciarPagoStripe}
@@ -663,7 +667,7 @@ const resolveApiDate = (row: Record<string, unknown>) => row.fecha
   ?? row.fecha_hora_modificacion
   ?? row.fechaHoraModificacion;
 
-const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, suscripcion, plan, licencia, pagos, diasRestantes, onValidarLicencia, onPagarStripe }: {
+const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, suscripcion, plan, licencia, pagos, recibos, diasRestantes, onValidarLicencia, onPagarStripe }: {
   loading: boolean;
   empresaId?: string | null;
   suscripcionActivaId: number | null;
@@ -671,6 +675,7 @@ const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, suscrip
   plan: Record<string, unknown>;
   licencia: Record<string, unknown>;
   pagos: Record<string, unknown>[];
+  recibos: Record<string, unknown>[];
   diasRestantes: number | null;
   onValidarLicencia: () => void;
   onPagarStripe: () => void;
@@ -717,6 +722,13 @@ const LicenciaPagosSection = ({ loading, empresaId, suscripcionActivaId, suscrip
     </Row>
     <DataTable title="Suscripcion Vigente" rows={suscripcion.id ? [suscripcion] : []} loading={loading} />
     <DataTable title="Pagos" rows={pagos} loading={loading} />
+    <Alert
+      type="info"
+      showIcon
+      message="Recibos Electronicos"
+      description="Los recibos son emitidos por el Control Plane despues de pagos confirmados. El envio por correo y el hash del PDF quedan trazados en cada registro."
+    />
+    <DataTable title="Recibos Electronicos" rows={recibos} loading={loading} />
   </Space>
 );
 
